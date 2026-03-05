@@ -137,11 +137,32 @@ export function displayName(session: CctopSession): string {
 }
 
 /**
- * Source label: "OC" for opencode, "CC" for Claude Code.
+ * Source label: "OC" for opencode, "CX" for Codex, "CC" for Claude Code/default.
  * Matches Session.swift sourceLabel.
  */
 export function sourceLabel(session: CctopSession): string {
-  return session.source === "opencode" ? "OC" : "CC";
+  const source = session.source?.toLowerCase();
+  switch (source) {
+    case "opencode":
+      return "OC";
+    case "codex":
+      return "CX";
+    default:
+      return "CC";
+  }
+}
+
+/** Human-friendly source name for detail views. */
+export function sourceName(session: CctopSession): string {
+  const source = session.source?.toLowerCase();
+  switch (source) {
+    case "opencode":
+      return "opencode";
+    case "codex":
+      return "Codex";
+    default:
+      return "Claude Code";
+  }
 }
 
 /**

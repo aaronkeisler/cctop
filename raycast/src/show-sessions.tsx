@@ -19,6 +19,7 @@ import {
   contextLine,
   relativeTime,
   sourceLabel,
+  sourceName,
   statusGroup,
   groupSessions,
   needsAttention,
@@ -34,7 +35,7 @@ import {
 } from "./status-ui";
 import { CctopSession } from "./types";
 
-/** Check if sessions come from multiple sources (CC + OC) */
+/** Check if sessions come from multiple sources (CC + CX + OC). */
 function hasMultipleSources(sessions: CctopSession[]): boolean {
   if (sessions.length === 0) return false;
   const firstSource = sessions[0].source ?? null;
@@ -57,8 +58,12 @@ function sessionAccessories(
 
   if (showSource) {
     const label = sourceLabel(session);
+    const source = session.source?.toLowerCase();
+    let color = Color.Orange;
+    if (source === "opencode") color = Color.Blue;
+    if (source === "codex") color = Color.Green;
     accessories.push({
-      tag: { value: label, color: label === "OC" ? Color.Blue : Color.Orange },
+      tag: { value: label, color },
     });
   }
 
@@ -117,7 +122,7 @@ function SessionDetail({ session }: { session: CctopSession }) {
           />
           <List.Item.Detail.Metadata.Label
             title="Source"
-            text={session.source === "opencode" ? "opencode" : "Claude Code"}
+            text={sourceName(session)}
           />
           <List.Item.Detail.Metadata.Separator />
           <List.Item.Detail.Metadata.Label
@@ -366,7 +371,7 @@ export default function ShowSessions() {
           description={
             allSessions.length > 0 && filteredSessions.length === 0
               ? "Try changing the filter to see more sessions"
-              : "Start a Claude Code or opencode session to see it here"
+              : "Start a Claude Code, Codex, or opencode session to see it here"
           }
           icon={
             allSessions.length > 0 && filteredSessions.length === 0

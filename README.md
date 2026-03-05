@@ -3,7 +3,7 @@
 [![GitHub release](https://img.shields.io/github/v/release/st0012/cctop?v=1)](https://github.com/st0012/cctop/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**A keyboard-first menubar app to monitor and jump between Claude Code and opencode sessions — minimum setup required.**
+**A keyboard-first menubar app to monitor and jump between Claude Code, Codex, and opencode sessions — minimum setup required.**
 
 Works with your existing editor and terminal. No IDE needed, no workflow changes — just install the app, connect your tools, and every session shows up in a floating panel you can navigate with your keyboard.
 
@@ -17,7 +17,7 @@ Works with your existing editor and terminal. No IDE needed, no workflow changes
   <img src="docs/menubar-dark.png" alt="cctop menubar popup (dark mode)" width="340">
 </p>
 
-<p align="center"><em>Monitoring Claude Code and opencode sessions side by side — light and dark mode.</em></p>
+<p align="center"><em>Monitoring Claude Code, Codex, and opencode sessions side by side — light and dark mode.</em></p>
 
 ## Features
 
@@ -43,7 +43,7 @@ Works with your existing editor and terminal. No IDE needed, no workflow changes
   <img src="docs/menubar-compact-light.png" alt="cctop compact mode showing header-only view" width="340">
 </p>
 
-Works with [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and [opencode](https://opencode.ai).
+Works with [Claude Code](https://docs.anthropic.com/en/docs/claude-code), Codex, and [opencode](https://opencode.ai).
 
 ## Installation
 

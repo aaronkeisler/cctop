@@ -279,6 +279,16 @@ final class SessionTests: XCTestCase {
         XCTAssertEqual(session.sourceLabel, "CC")
     }
 
+    func testSourceLabelCodex() {
+        let session = Session.mock(source: "codex")
+        XCTAssertEqual(session.sourceLabel, "CX")
+    }
+
+    func testSourceLabelCodexCaseInsensitive() {
+        let session = Session.mock(source: "Codex")
+        XCTAssertEqual(session.sourceLabel, "CX")
+    }
+
     func testSourceCarriedInWithSessionId() {
         let session = Session.mock(source: "opencode")
         let carried = session.withSessionId("new-id")

@@ -90,7 +90,14 @@ struct Session: Codable, Identifiable {
     }
 
     var sourceLabel: String {
-        source == "opencode" ? "OC" : "CC"
+        switch source?.lowercased() {
+        case "opencode":
+            return "OC"
+        case "codex":
+            return "CX"
+        default:
+            return "CC"
+        }
     }
 
     enum CodingKeys: String, CodingKey {

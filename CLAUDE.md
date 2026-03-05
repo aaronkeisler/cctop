@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-cctop is a macOS menubar app for monitoring AI coding sessions across workspaces. It tracks session status (idle, working, needs attention) via tool-specific plugins and allows jumping to sessions. Works with Claude Code and opencode. Also includes a Raycast extension that reads the same session data.
+cctop is a macOS menubar app for monitoring AI coding sessions across workspaces. It tracks session status (idle, working, needs attention) via tool-specific plugins and allows jumping to sessions. Works with Claude Code, Codex, and opencode. Also includes a Raycast extension that reads the same session data.
 
 ## MUST FOLLOW: Development Principles
 
@@ -348,7 +348,7 @@ The menubar app detects opencode when `~/.config/opencode/` exists and offers to
 
 ### Session File Format
 
-Session files are keyed by PID (`{pid}.json`), not session_id. Each file stores `pid_start_time` (from `sysctl`) to detect PID reuse. Dead sessions are detected via PID liveness + start time checking. opencode sessions include `"source": "opencode"` in the JSON; Claude Code sessions omit the field (nil = Claude Code).
+Session files are keyed by PID (`{pid}.json`), not session_id. Each file stores `pid_start_time` (from `sysctl`) to detect PID reuse. Dead sessions are detected via PID liveness + start time checking. opencode sessions include `"source": "opencode"`; Codex sessions include `"source": "codex"`; Claude Code sessions may omit the field (nil = Claude Code).
 
 ## Compact Mode
 

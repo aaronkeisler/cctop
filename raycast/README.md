@@ -15,7 +15,7 @@ brew install --cask cctop
 
 Or [download the latest release](https://github.com/st0012/cctop/releases/latest).
 
-After installing, follow the app's instructions to connect your tools (Claude Code and/or opencode).
+After installing, follow the app's instructions to connect your tools (Claude Code, Codex, and/or opencode).
 
 ## Features
 
@@ -27,4 +27,4 @@ After installing, follow the app's instructions to connect your tools (Claude Co
 
 ## How It Works
 
-The cctop menubar app writes session files to `~/.cctop/sessions/` via plugins for Claude Code and opencode. This Raycast extension reads those files and displays live session status, polling every 2 seconds. No network access is involved — all data stays on your machine.
+The cctop menubar app writes session files to `~/.cctop/sessions/` from supported tools (including Claude Code, Codex, and opencode). This Raycast extension reads those files and displays live session status, polling every 2 seconds. No network access is involved — all data stays on your machine.
