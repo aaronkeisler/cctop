@@ -1,0 +1,234 @@
+#!/usr/bin/env node
+
+"use strict";
+
+const { spawn, spawnSync } = require("child_process");
+const { homedir } = require("os");
+const { basename, join, resolve } = require("path");
+const { chmodSync, mkdirSync, renameSync, writeFileSync } = require("fs");
+
+const args = process.argv.slice(2);
+const sessionsDir = process.env.CCTOP_SESSIONS_DIR || join(homedir(), ".cctop", "sessions");
+
+const optionsWithValues = new Set([
+  "-c",
+  "--config",
+  "--enable",
+  "--disable",
+  "-i",
+  "--image",
+  "-m",
+  "--model",
+  "-p",
+  "--profile",
+  "-s",
+  "--sandbox",
+  "-a",
+  "--ask-for-approval",
+  "-C",
+  "--cd",
+  "--add-dir",
+]);
+
+const commandNames = new Set([
+  "exec",
+  "e",
+  "review",
+  "login",
+  "logout",
+  "mcp",
+  "mcp-server",
+  "app-server",
+  "app",
+  "completion",
+  "sandbox",
+  "debug",
+  "apply",
+  "a",
+  "resume",
+  "fork",
+  "cloud",
+  "features",
+  "help",
+]);
+
+function nowIso() {
+  return new Date().toISOString();
+}
+
+function resolveProjectPath(cliArgs) {
+  let projectPath = process.cwd();
+  for (let i = 0; i < cliArgs.length; i += 1) {
+    const token = cliArgs[i];
+    if (token === "-C" || token === "--cd") {
+      if (i + 1 < cliArgs.length) {
+        projectPath = resolve(cliArgs[i + 1]);
+        i += 1;
+      }
+      continue;
+    }
+    if (token.startsWith("--cd=")) {
+      projectPath = resolve(token.slice("--cd=".length));
+    }
+  }
+  return projectPath;
+}
+
+function parseCommand(cliArgs) {
+  for (let i = 0; i < cliArgs.length; i += 1) {
+    const token = cliArgs[i];
+    if (token === "--") {
+      if (i + 1 < cliArgs.length && commandNames.has(cliArgs[i + 1])) return cliArgs[i + 1];
+      return null;
+    }
+    if (token.startsWith("--cd=")) continue;
+    if (token.startsWith("-")) {
+      if (optionsWithValues.has(token)) i += 1;
+      continue;
+    }
+    return commandNames.has(token) ? token : null;
+  }
+  return null;
+}
+
+function initialStatus(command) {
+  return command === "exec" || command === "e" || command === "review" || command === "apply" || command === "a"
+    ? "working"
+    : "waiting_input";
+}
+
+function gitBranch(cwd) {
+  const result = spawnSync("git", ["branch", "--show-current"], {
+    cwd,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+  const branch = result.status === 0 ? result.stdout.trim() : "";
+  return branch || "unknown";
+}
+
+function ttyName() {
+  if (process.env.TTY) return process.env.TTY;
+  const result = spawnSync("tty", { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+  if (result.status !== 0) return null;
+  const value = result.stdout.trim();
+  if (!value || value === "not a tty") return null;
+  return value;
+}
+
+function elapsedToSeconds(etime) {
+  // ps etime formats: [[dd-]hh:]mm:ss
+  const trimmed = etime.trim();
+  if (!trimmed) return null;
+  const daySplit = trimmed.split("-");
+  let days = 0;
+  let rest = trimmed;
+  if (daySplit.length === 2) {
+    days = Number(daySplit[0]);
+    rest = daySplit[1];
+  }
+  const parts = rest.split(":").map((v) => Number(v));
+  if (parts.some((v) => Number.isNaN(v))) return null;
+  let seconds = 0;
+  if (parts.length === 3) {
+    seconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+  } else if (parts.length === 2) {
+    seconds = parts[0] * 60 + parts[1];
+  } else {
+    return null;
+  }
+  return days * 86400 + seconds;
+}
+
+function processStartTime(pid) {
+  const result = spawnSync("ps", ["-o", "etime=", "-p", String(pid)], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+  if (result.status !== 0) return null;
+  const elapsed = elapsedToSeconds(result.stdout);
+  if (elapsed == null) return null;
+  return Date.now() / 1000 - elapsed;
+}
+
+function writeSession(path, session) {
+  mkdirSync(sessionsDir, { recursive: true, mode: 0o700 });
+  const tmpPath = `${path}.${process.pid}.tmp`;
+  writeFileSync(tmpPath, `${JSON.stringify(session, null, 2)}\n`);
+  chmodSync(tmpPath, 0o600);
+  renameSync(tmpPath, path);
+}
+
+const projectPath = resolveProjectPath(args);
+const command = parseCommand(args);
+const startedAt = nowIso();
+
+const child = spawn("codex", args, {
+  stdio: "inherit",
+});
+
+child.on("error", (error) => {
+  process.stderr.write(`Failed to start codex: ${error.message}\n`);
+  process.exit(1);
+});
+
+child.on("spawn", () => {
+  const pid = child.pid;
+  const sessionPath = join(sessionsDir, `${pid}.json`);
+
+  const session = {
+    session_id: `codex-${pid}`,
+    project_path: projectPath,
+    project_name: basename(projectPath),
+    branch: gitBranch(projectPath),
+    status: initialStatus(command),
+    last_prompt: null,
+    last_activity: startedAt,
+    started_at: startedAt,
+    terminal: {
+      program: process.env.TERM_PROGRAM || "",
+      session_id: process.env.ITERM_SESSION_ID || process.env.KITTY_WINDOW_ID || null,
+      tty: ttyName(),
+    },
+    pid,
+    pid_start_time: processStartTime(pid),
+    last_tool: null,
+    last_tool_detail: null,
+    notification_message: null,
+    session_name: null,
+    workspace_file: null,
+    source: "codex",
+  };
+
+  const heartbeat = setInterval(() => {
+    session.last_activity = nowIso();
+    writeSession(sessionPath, session);
+  }, 5000);
+
+  writeSession(sessionPath, session);
+
+  child.on("exit", (code, signal) => {
+    clearInterval(heartbeat);
+    session.last_activity = nowIso();
+    session.ended_at = session.last_activity;
+    if (code && code !== 0) {
+      session.status = "needs_attention";
+      session.notification_message = `codex exited with code ${code}`;
+    } else if (signal) {
+      session.status = "needs_attention";
+      session.notification_message = `codex terminated by ${signal}`;
+    }
+    writeSession(sessionPath, session);
+    if (signal) {
+      process.kill(process.pid, signal);
+      return;
+    }
+    process.exit(code ?? 0);
+  });
+});
+
+for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"]) {
+  process.on(sig, () => {
+    if (child.pid) child.kill(sig);
+  });
+}

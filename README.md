@@ -62,6 +62,18 @@ Or [download the latest release](https://github.com/st0012/cctop/releases/latest
 
 Follow the app's instructions to install Claude Code and/or opencode plugin.
 
+For Codex CLI, use the included wrapper so cctop receives session updates:
+
+```bash
+# Optional: put the helper on your PATH
+ln -sf "$(pwd)/scripts/cctop-codex" ~/.local/bin/cctop-codex
+
+# Start Codex through the wrapper
+cctop-codex
+```
+
+The wrapper writes session files to `~/.cctop/sessions/` with `source: "codex"`.
+
 ## Privacy
 
 **No network access. No analytics. No telemetry. All data stays on your machine.**
