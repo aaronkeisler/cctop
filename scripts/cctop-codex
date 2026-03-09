@@ -130,6 +130,42 @@ function readRecentLines(path, maxLines = 500) {
   return lines.slice(lines.length - maxLines);
 }
 
+function readInitialLines(path, maxLines = 120) {
+  let raw = "";
+  try {
+    raw = readFileSync(path, "utf8");
+  } catch {
+    return [];
+  }
+  const lines = raw.split("\n").filter(Boolean);
+  if (lines.length <= maxLines) return lines;
+  return lines.slice(0, maxLines);
+}
+
+function parseSessionMeta(path) {
+  const lines = readInitialLines(path, 120);
+  for (const line of lines) {
+    let parsed;
+    try {
+      parsed = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    if (parsed.type !== "session_meta") continue;
+    const payload = parsed.payload || {};
+    const rawTimestamp = typeof payload.timestamp === "string"
+      ? payload.timestamp
+      : (typeof parsed.timestamp === "string" ? parsed.timestamp : null);
+    const parsedTs = rawTimestamp ? Date.parse(rawTimestamp) : Number.NaN;
+    return {
+      id: typeof payload.id === "string" ? payload.id : null,
+      cwd: typeof payload.cwd === "string" ? payload.cwd : null,
+      timestampMs: Number.isNaN(parsedTs) ? null : parsedTs,
+    };
+  }
+  return null;
+}
+
 function latestContext(logPath) {
   const lines = readRecentLines(logPath, 800);
   for (let i = lines.length - 1; i >= 0; i -= 1) {
@@ -240,25 +276,30 @@ function findCodexSessionLog(projectPath, startedAtMs, knownSessionId) {
       continue;
     }
     if (modified + 10_000 < startedAtMs) continue;
-    const lines = readRecentLines(path, 60);
-    for (const line of lines) {
-      let parsed;
-      try {
-        parsed = JSON.parse(line);
-      } catch {
-        continue;
-      }
-      if (parsed.type !== "session_meta") continue;
-      const payload = parsed.payload || {};
-      if (payload.cwd !== projectPath) continue;
-      if (knownSessionId && payload.id !== knownSessionId) continue;
-      candidates.push({ path, modified });
-      break;
-    }
+    const meta = parseSessionMeta(path);
+    if (!meta) continue;
+    if (meta.cwd !== projectPath) continue;
+    if (knownSessionId && meta.id !== knownSessionId) continue;
+
+    const anchorTime = meta.timestampMs ?? modified;
+    const distanceFromSpawnMs = Math.abs(anchorTime - startedAtMs);
+    const startsNearSpawn = anchorTime + 10_000 >= startedAtMs;
+    candidates.push({
+      path,
+      modified,
+      startsNearSpawn,
+      distanceFromSpawnMs,
+    });
   }
 
   if (candidates.length === 0) return null;
-  candidates.sort((a, b) => b.modified - a.modified);
+  candidates.sort((a, b) => {
+    if (a.startsNearSpawn !== b.startsNearSpawn) return a.startsNearSpawn ? -1 : 1;
+    if (a.distanceFromSpawnMs !== b.distanceFromSpawnMs) {
+      return a.distanceFromSpawnMs - b.distanceFromSpawnMs;
+    }
+    return b.modified - a.modified;
+  });
   return candidates[0].path;
 }
 
@@ -383,6 +424,10 @@ child.on("error", (error) => {
 child.on("spawn", () => {
   const pid = child.pid;
   const sessionPath = join(sessionsDir, `${pid}.json`);
+  const pidStartTime = processStartTime(pid);
+  const logSearchStartedAtMs = Number.isFinite(pidStartTime)
+    ? pidStartTime * 1000
+    : startedAtMs;
 
   const session = {
     session_id: `codex-${pid}`,
@@ -399,7 +444,7 @@ child.on("spawn", () => {
       tty: ttyName(),
     },
     pid,
-    pid_start_time: processStartTime(pid),
+    pid_start_time: pidStartTime,
     last_tool: "Task",
     last_tool_detail: commandText,
     notification_message: null,
@@ -412,7 +457,7 @@ child.on("spawn", () => {
   const heartbeat = setInterval(() => {
     session.status = "idle";
     if (!codexLogPath) {
-      codexLogPath = findCodexSessionLog(projectPath, startedAtMs, codexSessionIdEnv);
+      codexLogPath = findCodexSessionLog(projectPath, logSearchStartedAtMs, codexSessionIdEnv);
     }
     if (codexLogPath) {
       session.status = latestStatus(codexLogPath);
