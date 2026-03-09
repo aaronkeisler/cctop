@@ -9,6 +9,7 @@ enum HostApp {
     case zed
     case iterm2
     case warp
+    case ghostty
     case terminal
     case unknown
 
@@ -24,6 +25,7 @@ enum HostApp {
         if lower.contains("code") { return .vscode }
         if lower.contains("iterm") { return .iterm2 }
         if lower.contains("warp") { return .warp }
+        if lower.contains("ghostty") { return .ghostty }
         if lower.contains("terminal") { return .terminal }
         return .unknown
     }
@@ -36,6 +38,7 @@ enum HostApp {
         case .zed: return "dev.zed.Zed"
         case .iterm2: return "com.googlecode.iterm2"
         case .warp: return "dev.warp.Warp-Stable"
+        case .ghostty: return "com.mitchellh.ghostty"
         case .terminal: return "com.apple.Terminal"
         case .unknown: return nil
         }
@@ -50,6 +53,7 @@ enum HostApp {
         case .zed: return "zed"
         case .iterm2: return "iterm2"
         case .warp: return "warp"
+        case .ghostty: return "ghostty"
         case .terminal: return "terminal"
         case .unknown: return nil
         }
@@ -59,7 +63,7 @@ enum HostApp {
         switch self {
         case .vscode, .cursor, .windsurf, .zed:
             return "chevron.left.forwardslash.chevron.right"
-        case .iterm2, .warp, .terminal, .unknown:
+        case .iterm2, .warp, .ghostty, .terminal, .unknown:
             return "terminal"
         }
     }
@@ -68,7 +72,7 @@ enum HostApp {
     var usesWorkspaceFile: Bool {
         switch self {
         case .vscode, .cursor, .windsurf, .zed: return true
-        case .iterm2, .warp, .terminal, .unknown: return false
+        case .iterm2, .warp, .ghostty, .terminal, .unknown: return false
         }
     }
 

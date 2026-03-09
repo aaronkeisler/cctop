@@ -34,18 +34,24 @@ struct SettingsSection: View {
     @AppStorage("appearanceMode") private var appearanceMode = "system"
     @AppStorage("notificationsEnabled") private var notificationsEnabled = true
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
-    @State private var justInstalled = false
-    @State private var installFailed = false
-    @State private var removeHovered = false
+    @State private var codexJustInstalled = false
+    @State private var codexInstallFailed = false
+    @State private var codexRemoveHovered = false
+    @State private var opencodeJustInstalled = false
+    @State private var opencodeInstallFailed = false
+    @State private var opencodeRemoveHovered = false
 
     var body: some View {
         VStack(spacing: 0) {
             updateSection
             MonitoredToolsView(
                 pluginManager: pluginManager,
-                justInstalled: $justInstalled,
-                installFailed: $installFailed,
-                removeHovered: $removeHovered
+                codexJustInstalled: $codexJustInstalled,
+                codexInstallFailed: $codexInstallFailed,
+                codexRemoveHovered: $codexRemoveHovered,
+                opencodeJustInstalled: $opencodeJustInstalled,
+                opencodeInstallFailed: $opencodeInstallFailed,
+                opencodeRemoveHovered: $opencodeRemoveHovered
             )
             Divider().padding(.horizontal, 14)
             VStack(alignment: .leading, spacing: 8) {
@@ -215,9 +221,12 @@ struct SettingsSection: View {
 
 private struct MonitoredToolsView: View {
     @ObservedObject var pluginManager: PluginManager
-    @Binding var justInstalled: Bool
-    @Binding var installFailed: Bool
-    @Binding var removeHovered: Bool
+    @Binding var codexJustInstalled: Bool
+    @Binding var codexInstallFailed: Bool
+    @Binding var codexRemoveHovered: Bool
+    @Binding var opencodeJustInstalled: Bool
+    @Binding var opencodeInstallFailed: Bool
+    @Binding var opencodeRemoveHovered: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -225,6 +234,7 @@ private struct MonitoredToolsView: View {
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(Color.textSecondary)
             toolRow(name: "Claude Code", installed: pluginManager.ccInstalled)
+            codexRow
             if pluginManager.ocConfigExists {
                 openCodeRow
             }
@@ -239,26 +249,26 @@ private struct MonitoredToolsView: View {
             HStack(spacing: 8) {
                 toolLabel("opencode")
                 Spacer()
-                if justInstalled {
+                if opencodeJustInstalled {
                     EmptyView()
                 } else if pluginManager.ocInstalled {
                     connectedBadge
                     Button {
                         if !pluginManager.removeOpenCodePlugin() {
-                            flashFailed()
+                            flashOpenCodeFailed()
                         }
                     } label: {
                         Text("Remove")
                             .font(.system(size: 10))
-                            .foregroundStyle(removeHovered ? Color.primary : Color.textMuted)
+                            .foregroundStyle(opencodeRemoveHovered ? Color.primary : Color.textMuted)
                     }
                     .buttonStyle(.plain)
-                    .onHover { removeHovered = $0 }
+                    .onHover { opencodeRemoveHovered = $0 }
                 } else {
-                    installPluginButton
+                    installOpenCodeButton
                 }
             }
-            if justInstalled {
+            if opencodeJustInstalled {
                 HStack(spacing: 4) {
                     Image(systemName: "checkmark")
                         .font(.system(size: 10))
@@ -269,7 +279,7 @@ private struct MonitoredToolsView: View {
                 }
                 .transition(.opacity)
             }
-            if installFailed {
+            if opencodeInstallFailed {
                 Text("Failed \u{2014} check permissions")
                     .font(.system(size: 10))
                     .foregroundStyle(Color.amber)
@@ -278,16 +288,83 @@ private struct MonitoredToolsView: View {
         }
     }
 
-    private var installPluginButton: some View {
+    private var codexRow: some View {
+        VStack(spacing: 4) {
+            HStack(spacing: 8) {
+                toolLabel("Codex")
+                Spacer()
+                if codexJustInstalled {
+                    EmptyView()
+                } else if pluginManager.cxInstalled {
+                    connectedBadge
+                    Button {
+                        if !pluginManager.removeCodexWrapper() {
+                            flashCodexFailed()
+                        }
+                    } label: {
+                        Text("Remove")
+                            .font(.system(size: 10))
+                            .foregroundStyle(codexRemoveHovered ? Color.primary : Color.textMuted)
+                    }
+                    .buttonStyle(.plain)
+                    .onHover { codexRemoveHovered = $0 }
+                } else {
+                    installCodexButton
+                }
+            }
+            if codexJustInstalled {
+                HStack(spacing: 4) {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.green)
+                    Text("Installed \u{2014} launch Codex with cctop-codex")
+                        .font(.system(size: 10))
+                        .foregroundStyle(Color.textMuted)
+                }
+                .transition(.opacity)
+            }
+            if codexInstallFailed {
+                Text("Failed \u{2014} check permissions")
+                    .font(.system(size: 10))
+                    .foregroundStyle(Color.amber)
+                    .transition(.opacity)
+            }
+        }
+    }
+
+    private var installCodexButton: some View {
         Button {
-            if pluginManager.installOpenCodePlugin() {
-                justInstalled = true
-                installFailed = false
+            if pluginManager.installCodexWrapper() {
+                codexJustInstalled = true
+                codexInstallFailed = false
                 DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                    justInstalled = false
+                    codexJustInstalled = false
                 }
             } else {
-                flashFailed()
+                flashCodexFailed()
+            }
+        } label: {
+            Text("Install Helper")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(Color.segmentActiveText)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(Color.amber)
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var installOpenCodeButton: some View {
+        Button {
+            if pluginManager.installOpenCodePlugin() {
+                opencodeJustInstalled = true
+                opencodeInstallFailed = false
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                    opencodeJustInstalled = false
+                }
+            } else {
+                flashOpenCodeFailed()
             }
         } label: {
             Text("Install Plugin")
@@ -301,10 +378,17 @@ private struct MonitoredToolsView: View {
         .buttonStyle(.plain)
     }
 
-    private func flashFailed() {
-        installFailed = true
+    private func flashCodexFailed() {
+        codexInstallFailed = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-            installFailed = false
+            codexInstallFailed = false
+        }
+    }
+
+    private func flashOpenCodeFailed() {
+        opencodeInstallFailed = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            opencodeInstallFailed = false
         }
     }
 
@@ -352,10 +436,11 @@ private struct MonitoredToolsView: View {
     override var canCheckForUpdates: Bool { true }
 }
 @MainActor private func previewPM(
-    cc: Bool = true, oc: Bool = false, ocConfig: Bool = false
+    cc: Bool = true, cx: Bool = false, oc: Bool = false, ocConfig: Bool = false
 ) -> PluginManager {
     let pm = PluginManager()
     pm.ccInstalled = cc
+    pm.cxInstalled = cx
     pm.ocInstalled = oc
     pm.ocConfigExists = ocConfig
     return pm

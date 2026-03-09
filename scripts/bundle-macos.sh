@@ -62,6 +62,7 @@ cp "$REPO_ROOT/menubar/build/Build/Products/Release/cctop-hook" "$APP/Contents/M
 # Copy opencode plugin into Resources
 mkdir -p "$APP/Contents/Resources"
 cp "$REPO_ROOT/plugins/opencode/plugin.js" "$APP/Contents/Resources/opencode-plugin.js"
+cp "$REPO_ROOT/scripts/cctop-codex" "$APP/Contents/Resources/cctop-codex"
 
 # Ad-hoc sign (innermost first — no --deep)
 echo "==> Signing app bundle..."

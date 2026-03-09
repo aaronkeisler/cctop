@@ -38,6 +38,22 @@ final class FocusTerminalTests: XCTestCase {
         XCTAssertEqual(result, "id")
     }
 
+    // MARK: - Host app classification
+
+    func testHostAppClassifiesGhostty() {
+        XCTAssertEqual(HostApp.from(editorName: "ghostty"), .ghostty)
+        XCTAssertEqual(HostApp.from(editorName: "Ghostty"), .ghostty)
+        XCTAssertEqual(HostApp.from(editorName: "com.mitchellh.ghostty"), .ghostty)
+    }
+
+    func testGhosttyMetadata() {
+        XCTAssertEqual(HostApp.ghostty.bundleID, "com.mitchellh.ghostty")
+        XCTAssertEqual(HostApp.ghostty.activationName, "ghostty")
+        XCTAssertEqual(HostApp.ghostty.sfSymbol, "terminal")
+        XCTAssertFalse(HostApp.ghostty.usesWorkspaceFile)
+        XCTAssertNil(HostApp.ghostty.cliCommand)
+    }
+
     // MARK: - Session.mock() terminal parameter
 
     func testMockDefaultTerminalIsCode() {

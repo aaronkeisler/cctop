@@ -8,7 +8,9 @@ struct EmptyStateView: View {
     private static let ccMarketplace = "claude plugin marketplace add st0012/cctop"
     private static let ccInstall = "claude plugin install cctop"
 
-    private var anyInstalled: Bool { pluginManager.ccInstalled || pluginManager.ocInstalled }
+    private var anyInstalled: Bool {
+        pluginManager.ccInstalled || pluginManager.cxInstalled || pluginManager.ocInstalled
+    }
 
     var body: some View {
         VStack(spacing: 16) {
@@ -41,6 +43,7 @@ struct EmptyStateView: View {
     private var installedView: some View {
         VStack(spacing: 8) {
             pluginStatusRow("Claude Code", installed: pluginManager.ccInstalled)
+            pluginStatusRow("Codex", installed: pluginManager.cxInstalled)
             if pluginManager.ocConfigExists {
                 ocPluginRow
             }
@@ -118,6 +121,11 @@ struct EmptyStateView: View {
                 commandRow(Self.ccInstall, index: 2)
             }
 
+            VStack(spacing: 6) {
+                sectionHeader("Codex")
+                stepRow(text: "Install the Codex helper from Settings, then launch cctop-codex")
+            }
+
             if pluginManager.ocConfigExists {
                 VStack(spacing: 6) {
                     sectionHeader("opencode")
@@ -186,10 +194,11 @@ struct EmptyStateView: View {
 
 @MainActor
 private func previewPluginManager(
-    cc: Bool = false, oc: Bool = false, ocConfig: Bool = false
+    cc: Bool = false, cx: Bool = false, oc: Bool = false, ocConfig: Bool = false
 ) -> PluginManager {
     let pm = PluginManager()
     pm.ccInstalled = cc
+    pm.cxInstalled = cx
     pm.ocInstalled = oc
     pm.ocConfigExists = ocConfig
     return pm
@@ -209,6 +218,10 @@ private func previewPluginManager(
 }
 #Preview("CC installed") {
     EmptyStateView(pluginManager: previewPluginManager(cc: true))
+        .frame(width: 320)
+}
+#Preview("Codex installed") {
+    EmptyStateView(pluginManager: previewPluginManager(cx: true))
         .frame(width: 320)
 }
 #Preview("CC installed + OC detected") {
