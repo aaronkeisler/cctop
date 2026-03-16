@@ -4,15 +4,10 @@ import SwiftUI
 
 extension Notification.Name {
     static let layoutChanged = Notification.Name("layoutChanged")
-    static let panelHeaderClicked = Notification.Name("panelHeaderClicked")
 }
 
 enum PopupTab {
     case active, recent
-}
-
-private enum Overlay: Equatable {
-    case settings, about
 }
 
 private let overlayAnimationDuration: TimeInterval = 0.2
@@ -22,17 +17,14 @@ struct PopupView: View {
     var recentProjects: [RecentProject] = []
     @ObservedObject var updater: UpdaterBase
     var pluginManager: PluginManager?
-    var refocus: RefocusController?
+    var navigate: NavigateController?
+    @ObservedObject var overlayController: OverlayController = OverlayController()
     var initialTab: PopupTab = .active
-    var isCompact = false
-    var isCompactModeEnabled = false
-    var onExpand: (() -> Void)?
     @State private var selectedTab: PopupTab = .active
-    @State private var activeOverlay: Overlay?
-    @State private var hideContent = false
     @State private var selectedIndex: Int?
     @State private var gearHovered = false
     @State private var versionHovered = false
+    @State private var shortcutHovered = false
     @State private var ocBannerInstalled = false
     @AppStorage("ocBannerDismissed") private var ocBannerDismissed = false
 
@@ -44,49 +36,47 @@ struct PopupView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HeaderView(sessions: sessions, onTap: isCompact ? onExpand : nil, isCompactMode: isCompactModeEnabled)
-            if !isCompact {
+            HeaderView(sessions: sessions)
+            Divider()
+            if showTabs {
+                tabPicker
                 Divider()
-                if showTabs {
-                    tabPicker
-                    Divider()
-                }
-                ZStack(alignment: .top) {
-                    Group {
-                        switch selectedTab {
-                        case .active: activeContent
-                        case .recent: recentContent
-                        }
-                    }
-                    .opacity(hideContent ? 0 : 1)
-                    .animation(.none, value: hideContent)
-                    if let overlay = activeOverlay {
-                        overlayPanel {
-                            switch overlay {
-                            case .settings:
-                                SettingsSection(
-                                    updater: updater,
-                                    pluginManager: pluginManager ?? PluginManager()
-                                )
-                            case .about:
-                                AboutView()
-                            }
-                        }
-                    }
-                }
-                .clipped()
-                .animation(.easeInOut(duration: overlayAnimationDuration), value: activeOverlay)
-                Divider()
-                footerBar
             }
+            ZStack(alignment: .top) {
+                Group {
+                    switch selectedTab {
+                    case .active: activeContent
+                    case .recent: recentContent
+                    }
+                }
+                .opacity(overlayController.hideContent ? 0 : 1)
+                .animation(.none, value: overlayController.hideContent)
+                if let overlay = overlayController.active {
+                    overlayPanel {
+                        switch overlay {
+                        case .settings:
+                            SettingsSection(
+                                updater: updater,
+                                pluginManager: pluginManager ?? PluginManager()
+                            )
+                        case .about:
+                            AboutView()
+                        }
+                    }
+                }
+            }
+            .clipped()
+            .animation(.easeInOut(duration: overlayAnimationDuration), value: overlayController.active)
+            Divider()
+            footerBar
         }
-        .onReceive(refocus?.didActivateSubject.eraseToAnyPublisher() ?? Empty().eraseToAnyPublisher()) { _ in
+        .onReceive(navigate?.didActivateSubject.eraseToAnyPublisher() ?? Empty().eraseToAnyPublisher()) { _ in
             selectedIndex = nil
             if selectedTab == .recent { selectedTab = .active }
-            if activeOverlay != nil { closeOverlay(animated: false) }
+            if overlayController.active != nil { closeOverlay(animated: false) }
         }
-        .onReceive(refocus?.navActionSubject.eraseToAnyPublisher() ?? Empty().eraseToAnyPublisher()) { action in
-            guard activeOverlay == nil else { return }
+        .onReceive(navigate?.navActionSubject.eraseToAnyPublisher() ?? Empty().eraseToAnyPublisher()) { action in
+            guard overlayController.active == nil else { return }
             handleNavAction(action)
         }
         .onChange(of: selectedTab) { _ in selectedIndex = nil }
@@ -107,7 +97,7 @@ struct PopupView: View {
 
     private func tabButton(_ label: String, count: Int, tab: PopupTab) -> some View {
         TabButtonView(label: label, count: count, isSelected: selectedTab == tab) {
-            if activeOverlay != nil { closeOverlay(animated: true) }
+            if overlayController.active != nil { closeOverlay(animated: true) }
             withAnimation(.easeInOut(duration: 0.15)) { selectedTab = tab }
             notifyLayoutChanged()
         }
@@ -131,11 +121,15 @@ struct PopupView: View {
                 }
                 ScrollViewReader { proxy in
                     ScrollView(showsIndicators: false) {
-                        LazyVStack(spacing: 4) {
+                        LazyVStack(spacing: 0) {
                             ForEach(Array(sortedSessions.enumerated()), id: \.element.id) { index, session in
+                                if index > 0 && selectedIndex != index && selectedIndex != index - 1 {
+                                    Divider()
+                                        .padding(.horizontal, 16)
+                                }
                                 SessionCardView(
                                     session: session,
-                                    refocusIndex: isRefocusActive ? index + 1 : nil,
+                                    navigateIndex: isNavigateActive ? index + 1 : nil,
                                     showSourceBadge: hasMultipleSources,
                                     isSelected: selectedIndex == index
                                 )
@@ -155,7 +149,7 @@ struct PopupView: View {
                                 .help("Click to jump to session")
                             }
                         }
-                        .padding(8)
+                        .padding(.vertical, 4)
                     }
                     .frame(maxHeight: 290)
                     .onChange(of: selectedIndex) { newIndex in
@@ -189,12 +183,16 @@ struct PopupView: View {
         } else {
             ScrollViewReader { proxy in
                 ScrollView(showsIndicators: false) {
-                    LazyVStack(spacing: 4) {
+                    LazyVStack(spacing: 0) {
                         ForEach(Array(recentProjects.enumerated()), id: \.element.id) { index, project in
+                            if index > 0 && selectedIndex != index && selectedIndex != index - 1 {
+                                Divider()
+                                    .padding(.horizontal, 16)
+                            }
                             recentCard(project, isSelected: selectedIndex == index)
                         }
                     }
-                    .padding(8)
+                    .padding(.vertical, 4)
                 }
                 .frame(maxHeight: 290)
                 .onChange(of: selectedIndex) { newIndex in
@@ -252,18 +250,15 @@ extension PopupView {
             QuitButton()
             versionButton
             footerShortcutHints
-                .font(.system(size: 10))
-                .foregroundStyle(Color.textMuted)
-                .lineLimit(1)
             Spacer()
             settingsGearButton
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 7)
     }
 
     private var versionButton: some View {
-        let isActive = activeOverlay == .about
+        let isActive = overlayController.active == .about
         let color: Color = isActive ? .amber : (versionHovered ? .primary : .textMuted)
         return Button { toggleOverlay(.about) } label: {
             Text("v\(Bundle.main.appVersion)")
@@ -279,14 +274,14 @@ extension PopupView {
         Button { toggleOverlay(.settings) } label: {
             Image(systemName: "gearshape")
                 .font(.system(size: 14))
-                .foregroundStyle(activeOverlay == .settings ? Color.amber : Color.secondary)
+                .foregroundStyle(overlayController.active == .settings ? Color.amber : Color.secondary)
                 .frame(width: 28, height: 28)
                 .background(
                     RoundedRectangle(cornerRadius: 4)
-                        .fill(Color.primary.opacity(gearHovered ? 0.1 : 0))
+                        .fill(Color.textPrimary.opacity(gearHovered ? 0.1 : 0))
                 )
                 .overlay(alignment: .topTrailing) {
-                    if updater.pendingUpdateVersion != nil && activeOverlay != .settings {
+                    if updater.pendingUpdateVersion != nil && overlayController.active != .settings {
                         Circle().fill(Color.amber).frame(width: 7, height: 7).offset(x: 2, y: -2)
                     }
                 }
@@ -298,15 +293,23 @@ extension PopupView {
     // MARK: - Helpers
 
     @ViewBuilder private var footerShortcutHints: some View {
-        if let sc = KeyboardShortcuts.getShortcut(for: .refocus) {
-            Text("\(sc.description) refocus \u{00B7} \u{2318}M compact")
-        } else { Text("\u{2318}M compact") }
+        if let sc = KeyboardShortcuts.getShortcut(for: .navigate) {
+            Button { toggleOverlay(.settings) } label: {
+                Text("\(sc.description) navigate")
+                    .font(.system(size: 10))
+                    .foregroundStyle(shortcutHovered ? Color.primary : Color.textSecondary)
+                    .underline(shortcutHovered)
+                    .lineLimit(1)
+            }
+            .buttonStyle(.plain)
+            .onHover { shortcutHovered = $0 }
+        } else { EmptyView() }
     }
-    private var isRefocusActive: Bool { refocus?.isActive ?? false }
+    private var isNavigateActive: Bool { navigate?.isActive ?? false }
     private var hasMultipleSources: Bool { Set(sessions.map(\.sourceLabel)).count > 1 }
 
     private var sortedSessions: [Session] {
-        if isRefocusActive, let frozen = refocus?.frozenSessions, !frozen.isEmpty {
+        if isNavigateActive, let frozen = navigate?.frozenSessions, !frozen.isEmpty {
             return frozen
         }
         return Session.sorted(sessions)
@@ -314,27 +317,22 @@ extension PopupView {
 
     private func focusSession(_ session: Session) { focusTerminal(session: session); NSApp.deactivate() }
 
-    private func toggleOverlay(_ overlay: Overlay) {
-        if activeOverlay == overlay {
+    private func toggleOverlay(_ overlay: PopupOverlay) {
+        if overlayController.active == overlay {
             closeOverlay(animated: true)
         } else {
-            activeOverlay = nil
-            hideContent = true
-            activeOverlay = overlay
+            overlayController.active = nil
+            overlayController.hideContent = true
+            overlayController.active = overlay
             notifyLayoutChanged()
         }
     }
 
     private func closeOverlay(animated: Bool) {
-        activeOverlay = nil
+        overlayController.active = nil
         notifyLayoutChanged()
-        if animated {
-            DispatchQueue.main.asyncAfter(deadline: .now() + overlayAnimationDuration) {
-                hideContent = false
-            }
-        } else {
-            hideContent = false
-        }
+        guard animated else { overlayController.hideContent = false; return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + overlayAnimationDuration) { overlayController.hideContent = false }
     }
 
     private func notifyLayoutChanged() {
@@ -345,8 +343,6 @@ extension PopupView {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(path, forType: .string)
     }
-
-    // MARK: - Keyboard navigation
 
     private func handleNavAction(_ action: PanelNavAction) {
         switch action {
@@ -361,11 +357,7 @@ extension PopupView {
     private func moveSelection(by delta: Int) {
         let count = selectedTab == .active ? sortedSessions.count : recentProjects.count
         guard count > 0 else { return }
-        if let current = selectedIndex {
-            selectedIndex = min(max(0, current + delta), count - 1)
-        } else {
-            selectedIndex = delta > 0 ? 0 : count - 1
-        }
+        selectedIndex = selectedIndex.map { ($0 + delta + count) % count } ?? (delta > 0 ? 0 : count - 1)
     }
 
     private func confirmSelection() {
@@ -379,8 +371,8 @@ extension PopupView {
             openInEditor(project: recentProjects[index])
             NSApp.deactivate()
         }
-        if isRefocusActive {
-            refocus?.didConfirmSubject.send()
+        if isNavigateActive {
+            navigate?.didConfirmSubject.send()
         }
     }
 
@@ -393,7 +385,7 @@ extension PopupView {
         default: newTab = selectedTab == .active ? .recent : .active
         }
         guard newTab != selectedTab else { return }
-        if activeOverlay != nil { closeOverlay(animated: true) }
+        if overlayController.active != nil { closeOverlay(animated: true) }
         withAnimation(.easeInOut(duration: 0.15)) { selectedTab = newTab }
         notifyLayoutChanged()
     }

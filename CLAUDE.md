@@ -90,7 +90,14 @@ xcodebuild test -project menubar/CctopMenubar.xcodeproj -scheme CctopMenubar -co
 - `menubar/CctopMenubar/Models/HookEvent.swift` — Hook event enum + transition logic (shared)
 - `menubar/CctopMenubar/Models/Config.swift` — JSON config, sessions dir (shared)
 - `menubar/CctopMenubar/Services/SessionManager.swift` — File watching + session loading
-- `menubar/CctopMenubar/Services/CompactModeController.swift` — Compact mode state machine
+- `menubar/CctopMenubar/Services/NotchStatusController.swift` — Notch status panel lifecycle
+- `menubar/CctopMenubar/Views/NotchStatusPanel.swift` — NSPanel for notch area display
+- `menubar/CctopMenubar/Views/NotchStatusView.swift` — SwiftUI view for notch status pill
+- `menubar/CctopMenubar/Views/MenubarIconRenderer.swift` — Menubar icon with proportional status bar
+- `menubar/CctopMenubar/Models/StatusCounts.swift` — Aggregated session counts, bar segments, accessibility labels
+- `menubar/CctopMenubar/Models/StatusColors.swift` — Shared status bar colors (RGBColor with NSColor + SwiftUI Color)
+- `menubar/CctopMenubar/Models/Color+Theme.swift` — Theme-aware color tokens (textPrimary, textSecondary, textMuted, amber, etc.)
+- `menubar/CctopMenubar/Extensions/NSScreen+Notch.swift` — Notch detection extension
 - `menubar/CctopMenubar/Hook/HookMain.swift` — CLI entry point (cctop-hook target only)
 - `menubar/CctopMenubar/Hook/HookHandler.swift` — Core hook logic (cctop-hook target only)
 - `menubar/CctopMenubar/Hook/SessionNameLookup.swift` — Session name lookup from transcript/index (cctop-hook target only)
@@ -324,6 +331,8 @@ The menubar app detects opencode when `~/.config/opencode/` exists and offers to
 | Notification (elicitation_dialog) | waiting_input |
 | Notification (permission_prompt) | waiting_permission |
 | PermissionRequest | waiting_permission |
+| SubagentStart | (no status change — adds to active_subagents) |
+| SubagentStop | (no status change — removes from active_subagents) |
 | PreCompact | compacting |
 | SessionEnd | (removes session file immediately) |
 
@@ -350,65 +359,38 @@ The menubar app detects opencode when `~/.config/opencode/` exists and offers to
 
 Session files are keyed by PID (`{pid}.json`), not session_id. Each file stores `pid_start_time` (from `sysctl`) to detect PID reuse. Dead sessions are detected via PID liveness + start time checking. opencode sessions include `"source": "opencode"`; Codex sessions include `"source": "codex"`; Claude Code sessions may omit the field (nil = Claude Code).
 
-## Compact Mode
+The `active_subagents` field tracks currently running subagents (Agent tool). It's `nil` for sessions that haven't reported subagent events (old plugin), `[]` when no subagents are active, or an array of `{agent_id, agent_type, started_at}` objects. The menubar app shows a purple badge (e.g. "2 agents") when the count is > 0.
 
-A panel layout mode that collapses the popup to just the header bar (~44px) showing status count chips. Toggled via **Cmd+M** when the panel is focused. Persisted across launches via `@AppStorage("compactMode")`.
+## Notch Status View
 
-> **Note:** "Compact mode" (UI layout) and the "compacting" session status (context compaction) are unrelated concepts.
+On MacBook laptops with a camera notch, the menubar icon is often hidden behind the notch. The notch status view solves this by displaying a small black pill next to the camera notch showing a grid icon + proportional status bar. Clicking the pill toggles the main panel (same as clicking the menubar icon). The panel positions itself under whichever anchor is visible (pill or menubar icon) and clamps to screen bounds.
 
-### Architecture
+### Auto-Detection
 
-`CompactModeController` (ObservableObject) manages two state variables:
-- `compactMode` (Bool, persisted) — whether compact mode is enabled
-- `isExpanded` (Bool, transient) — whether the compact panel is temporarily expanded
+- **Notch Mac (built-in display):** Shows clickable NotchStatusPanel next to the notch when the menubar icon is occluded
+- **Non-notch / external display:** Hides notch panel; menubar icon (44px) is always visible
+- Detection uses `NSScreen.builtin?.hasPhysicalNotch` (checks `safeAreaInsets.top > 0`)
+- Display changes (clamshell mode, external monitor connect/disconnect) handled via `NSApplication.didChangeScreenParametersNotification`
 
-The derived property `isCompact = compactMode && !isExpanded` controls whether to render header-only.
+### Key Files
 
-### Visual Indicator
-
-An amber underline appears under the "cctop" text in the header when `compactMode` is true. This stays visible even when temporarily expanded, so the user knows they're in compact mode.
-
-### State Transitions
-
-| State | Cmd+M | Click Header | Escape | App Loses Focus | Refocus Shortcut |
-|-------|-------|-------------|--------|-----------------|------------------|
-| Normal | → Compact collapsed | no-op | reset selection | panel stays | → Refocus |
-| Compact collapsed | → Normal | → Compact expanded | → Focus previous app | panel stays | → Compact expanded + Refocus |
-| Compact expanded | → Normal | no-op | → Focus previous app (collapses) | → Compact collapsed | → Refocus |
-
-Key behaviors:
-- **Cmd+M** always calls `toggle()`, which flips `compactMode` and resets `isExpanded` to false. Works in ANY state including during refocus (ends refocus first, then toggles). From expanded/peeking state, Cmd+M goes to OFF (not back to collapsed).
-- **Escape** in compact mode activates `lastExternalApp` and the panel stays visible. This differs from normal mode where Escape resets the selection.
-- **App loses focus** while expanded triggers auto-collapse back to header-only (`didResignActiveNotification` observer).
-- **Refocus shortcut** auto-expands if compact (`startRefocus` calls `expand()`), then re-collapses when refocus ends (`endRefocus` calls `collapse()`).
-- `collapse()` is idempotent by design — multiple callers may invoke it in the same event cycle.
-- **Nav keys** (arrows, Return, Tab) are blocked when compact and collapsed; they pass through to the system.
-
-### Focus Restoration
-
-Two separate mechanisms handle returning focus to the user's previous app:
-- `previousApp` — captured in `togglePanel()` when the panel opens. Used when the panel is closed via menubar icon click.
-- `lastExternalApp` — continuously tracked via `NSWorkspace.didDeactivateApplicationNotification` (captures the app being replaced). Also synced from `previousApp` when the panel opens. Used when Escape is pressed in compact mode. These can point to different apps.
+- `menubar/CctopMenubar/Extensions/NSScreen+Notch.swift` — Notch detection (`hasPhysicalNotch`, `notchSize`, `isBuiltinDisplay`)
+- `menubar/CctopMenubar/Views/NotchStatusPanel.swift` — Borderless, non-activating NSPanel (clickable, toggles main panel)
+- `menubar/CctopMenubar/Views/NotchStatusView.swift` — SwiftUI pill with grid icon + proportional status bar
+- `menubar/CctopMenubar/Services/NotchStatusController.swift` — Panel lifecycle (`showOnScreen`, `update`, `tearDown`)
+- `menubar/CctopMenubar/Views/MenubarIconRenderer.swift` — Renders 44px menubar icon (16px icon + 22px status bar)
 
 ### Keyboard Shortcuts (Panel)
 
 | Shortcut | Context | Action |
 |----------|---------|--------|
-| Cmd+M | Panel focused | Toggle compact mode on/off |
-| Escape | Compact mode | Return focus to previous app (panel stays) |
 | Escape | Normal mode | Reset selection |
-| Escape | Refocus mode | Cancel refocus, restore focus |
-| Click header | Compact collapsed | Temporarily expand |
-| Up/Down arrows | Expanded or normal | Navigate sessions |
+| Escape | Navigate mode | Cancel navigate, restore focus |
+| Up/Down arrows | Panel open | Navigate sessions |
 | Return | Session selected | Jump to session terminal |
-| Tab | Expanded or normal | Toggle Active/Recent tab |
-| Left/Right arrows | Expanded or normal | Switch to Active/Recent tab |
-| 1-9 | Refocus mode | Jump to numbered session |
-
-### Key Files
-
-- `menubar/CctopMenubar/Services/CompactModeController.swift` — state machine (toggle, expand, collapse)
-- `menubar/CctopMenubar/AppDelegate.swift` — Cmd+M handler, Escape handler, nav key guard, lastExternalApp tracking, panel resize on state change
+| Tab | Panel open | Toggle Active/Recent tab |
+| Left/Right arrows | Panel open | Switch to Active/Recent tab |
+| 1-9 | Navigate mode | Jump to numbered session |
 
 ## Hook Delivery Debugging
 
@@ -605,3 +587,28 @@ Learned from development. The menubar app is pure Swift with two Xcode targets s
 - Hook/ files are cctop-hook only, Views/Services are menubar only — good split for parallel work
 - `raycast/` is independent of the Swift code — changes there don't affect menubar/cctop-hook builds
 - If the session JSON format changes (Models/Session.swift), update `raycast/src/types.ts` to match
+
+## Design Context
+
+### Users
+Developers monitoring multiple AI coding sessions (Claude Code, opencode) across workspaces. They glance at cctop in their periphery — it should convey status at a glance without demanding attention. The job: know which sessions need action, jump to them fast, then get back to work.
+
+### Brand Personality
+**Calm, precise, utilitarian.** cctop is a well-made instrument — no fuss, just works. But the craft shows in the details: the neutral color palette, the considered spacing, the keyboard-first interactions. It should feel like a quality indie Mac app, not a generic system utility.
+
+### Aesthetic Direction
+- **Visual tone:** Understated and neutral. A red accent (#ff6b6b dark / #d03830 light) provides identity without being loud. Neutral grays for text hierarchy (no warm/cool tinting). Dark mode is the primary context (developers), light mode should feel equally considered.
+- **Color system:** "Apple Native" (Option C) — named tokens in `Color+Theme.swift`: `textPrimary` (#f0f0f0/#1a1a1a), `textSecondary` (#9e9e9e/#666), `textMuted` (#666/#999), `amber` (the red accent), `panelBackground` (#1e1e1e/#fff). Light mode values are intentionally darker than typical to maintain contrast at small font sizes (10-11px).
+- **References:** Linear and Raycast (fast, keyboard-first, opinionated); Things 3 and Bear (indie Mac warmth, understated elegance, attention to detail).
+- **Anti-references:** Electron-feeling apps with web-like UI. Overly branded dashboards. Anything that looks like a monitoring tool from an ops context (Grafana, Datadog). Generic system preferences.
+- **Theme:** Both light and dark, fully theme-aware. All colors defined with explicit light/dark variants in `Color+Theme.swift`. Status bar colors (RGB) are appearance-independent.
+- **Corner radius system:** 4 for small inline elements (chips, badges), 6 for controls (tabs, session cards), 10 for panels.
+- **Font size system:** 11px medium for settings labels, 10px for secondary text (badges, hints, section headers). Session cards use 12-13px for primary content.
+
+### Design Principles
+1. **Glanceable over interactive.** Status should be understood in under a second. Minimize cognitive load — color + text pairing, proportional status bars, spatial consistency.
+2. **Native over novel.** Use San Francisco, standard macOS patterns, system-level behaviors (NSPanel, NSStatusItem). It should feel like part of the OS, not a foreign app.
+3. **Craft in the details.** Joy comes from noticing care — the neutral palette, the smooth keyboard navigation, the proportional status bar segments. Never flashy, always considered.
+4. **Function earns its pixels.** Every element must justify its space. No decorative chrome, no padding for padding's sake. Dense but not cramped — utilitarian density with breathing room.
+5. **Keyboard-first, mouse-friendly.** Navigate mode (1-9 keys), arrow keys, Tab switching — power users never touch the trackpad. But hover states and click targets are equally polished.
+6. **Prototype in HTML first.** Design changes are prototyped as self-contained HTML files (saved to `/tmp/`), reviewed in browser, then implemented in Swift with exact matching values. This prevents drift between design intent and implementation.

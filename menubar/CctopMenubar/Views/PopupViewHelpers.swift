@@ -1,5 +1,15 @@
 import SwiftUI
 
+enum PopupOverlay: Equatable {
+    case settings, about
+}
+
+@MainActor
+class OverlayController: ObservableObject {
+    @Published var active: PopupOverlay?
+    @Published var hideContent = false
+}
+
 enum PanelNavAction {
     case up, down, confirm, escape, reset, toggleTab, previousTab, nextTab
 }
@@ -15,27 +25,17 @@ struct CardSelectionStyle: ViewModifier {
         content
             .background(backgroundColor)
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
-            .overlay(
-                RoundedRectangle(cornerRadius: cornerRadius)
-                    .stroke(borderColor, lineWidth: 1)
-            )
     }
 
     private var backgroundColor: Color {
-        if isSelected { return Color.amber.opacity(0.10) }
-        if isHovered { return Color.primary.opacity(0.06) }
-        return Color.cardBackground
-    }
-
-    private var borderColor: Color {
-        if isSelected { return Color.amber.opacity(0.4) }
-        if isHovered { return Color.primary.opacity(0.15) }
-        return Color.cardBorder
+        if isSelected { return Color.textPrimary.opacity(0.12) }
+        if isHovered { return Color.textPrimary.opacity(0.07) }
+        return .clear
     }
 }
 
 extension View {
-    func cardSelectionStyle(isSelected: Bool, isHovered: Bool, cornerRadius: CGFloat = 10) -> some View {
+    func cardSelectionStyle(isSelected: Bool, isHovered: Bool, cornerRadius: CGFloat = 6) -> some View {
         modifier(CardSelectionStyle(isSelected: isSelected, isHovered: isHovered, cornerRadius: cornerRadius))
     }
 }
@@ -69,18 +69,18 @@ struct TabButtonView: View {
             HStack(spacing: 4) {
                 Text(label)
                     .font(.system(size: 11, weight: isSelected ? .semibold : .regular))
-                    .foregroundStyle(isSelected ? Color.amber : Color.textMuted)
+                    .foregroundStyle(isSelected ? Color.textPrimary : Color.textMuted)
                 Text("\(count)")
                     .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(isSelected ? Color.amber : Color.textMuted)
+                    .foregroundStyle(isSelected ? Color.textPrimary : Color.textMuted)
                     .padding(.horizontal, 4)
                     .padding(.vertical, 1)
-                    .background(isSelected ? Color.amber.opacity(0.15) : Color.primary.opacity(0.06))
-                    .clipShape(Capsule())
+                    .background(isSelected ? Color.textPrimary.opacity(0.12) : Color.textPrimary.opacity(0.05))
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 4)
-            .background(isSelected || isHovered ? Color.primary.opacity(0.08) : Color.clear)
+            .background(isSelected || isHovered ? Color.textPrimary.opacity(0.1) : Color.clear)
             .clipShape(RoundedRectangle(cornerRadius: 6))
             .contentShape(RoundedRectangle(cornerRadius: 6))
         }
@@ -96,8 +96,9 @@ struct PanelContentView: View {
     @ObservedObject var historyManager: HistoryManager
     @ObservedObject var updater: UpdaterBase
     @ObservedObject var pluginManager: PluginManager
-    @ObservedObject var refocus: RefocusController
-    @ObservedObject var compactController: CompactModeController
+    @ObservedObject var navigate: NavigateController
+    @ObservedObject private var themeManager = ThemeManager.shared
+    @StateObject private var overlayController = OverlayController()
 
     var body: some View {
         PopupView(
@@ -105,16 +106,13 @@ struct PanelContentView: View {
             recentProjects: historyManager.recentProjects,
             updater: updater,
             pluginManager: pluginManager,
-            refocus: refocus,
-            isCompact: compactController.isCompact,
-            isCompactModeEnabled: compactController.compactMode,
-            onExpand: {
-                NotificationCenter.default.post(name: .panelHeaderClicked, object: nil)
-            }
+            navigate: navigate,
+            overlayController: overlayController
         )
         .frame(width: 320)
         .background(Color.panelBackground)
         .clipShape(RoundedRectangle(cornerRadius: 10))
+        .id(themeManager.themeId)
     }
 }
 
@@ -145,22 +143,10 @@ struct PanelContentView: View {
         sessions: Session.mockSessions, recentProjects: [RecentProject.mock()], updater: DisabledUpdater()
     ).frame(width: 320)
 }
-#Preview("Refocus") {
-    let rc = RefocusController(); rc.isActive = true
+#Preview("Navigate") {
+    let rc = NavigateController(); rc.isActive = true
     return PopupView(
         sessions: Session.qaShowcase, recentProjects: RecentProject.mockRecents,
-        updater: DisabledUpdater(), refocus: rc
-    ).frame(width: 320)
-}
-#Preview("Compact") {
-    PopupView(
-        sessions: Session.qaShowcase, updater: DisabledUpdater(),
-        isCompact: true, isCompactModeEnabled: true
-    ).frame(width: 320)
-}
-#Preview("Compact Expanded") {
-    PopupView(
-        sessions: Session.qaShowcase, updater: DisabledUpdater(),
-        isCompactModeEnabled: true
+        updater: DisabledUpdater(), navigate: rc
     ).frame(width: 320)
 }

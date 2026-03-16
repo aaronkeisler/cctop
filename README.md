@@ -8,10 +8,6 @@
 Works with your existing editor and terminal. No IDE needed, no workflow changes — just install the app, connect your tools, and every session shows up in a floating panel you can navigate with your keyboard.
 
 <p align="center">
-  <img src="docs/cctop-8.0-demo.gif" alt="cctop demo — refocus, permission approval, history tab, opencode support" width="680">
-</p>
-
-<p align="center">
   <img src="docs/menubar-light.png" alt="cctop menubar popup (light mode)" width="340">
   &nbsp;&nbsp;
   <img src="docs/menubar-dark.png" alt="cctop menubar popup (dark mode)" width="340">
@@ -25,10 +21,16 @@ Works with your existing editor and terminal. No IDE needed, no workflow changes
 
 **Jump directly to any session.** Click a session card to raise its VS Code, Cursor, or iTerm2 window — or stay on the keyboard. Arrow keys to browse, Enter to jump, Tab to switch tabs.
 
-**Refocus mode.** Hit a global hotkey to overlay numbered badges (1–9) on every session card, then press the number to jump instantly.
+**Draggable panel.** Drag the header to reposition the panel anywhere on screen — position persists across launches. Double-click the header to snap back to the default menubar anchor.
 
 <p align="center">
-  <img src="docs/menubar-refocus.png" alt="cctop refocus mode with numbered badges" width="340">
+  <img src="docs/draggable-panel-demo.gif" alt="Dragging the cctop panel to a new position" width="680">
+</p>
+
+**Navigate mode.** Hit a global hotkey to overlay numbered badges (1–9) on every session card, then press the number to jump instantly.
+
+<p align="center">
+  <img src="docs/menubar-navigate.png" alt="cctop navigate mode with numbered badges" width="340">
 </p>
 
 **Recent Projects.** A second tab keeps session history so you can reopen past projects easily.
@@ -37,13 +39,26 @@ Works with your existing editor and terminal. No IDE needed, no workflow changes
   <img src="docs/menubar-recent.png" alt="cctop recent projects tab" width="340">
 </p>
 
-**Compact mode.** Press Cmd+M to collapse the panel to a slim header bar showing just the status counts. Press Cmd+M again to switch back. Click the header or use the refocus shortcut to temporarily expand, or press Escape to return focus to your previous app.
+**Smart status icon.** See session health without opening the panel:
+- **Status bar:** A proportional bar next to the icon shows green (working), amber (needs input), red (permission pending), or gray (idle).
+- **Attention tint:** When any session needs your input, the icon shifts to terracotta — visible even in your peripheral vision.
+- **Notch-aware:** On MacBooks where the notch hides the menubar icon, a small status pill appears next to the camera so you always have a signal.
 
 <p align="center">
-  <img src="docs/menubar-compact-light.png" alt="cctop compact mode showing header-only view" width="340">
+  <img src="docs/status-icon.png" alt="Status icon states: all healthy, needs attention, and notch pill" width="680">
 </p>
 
 Works with [Claude Code](https://docs.anthropic.com/en/docs/claude-code), Codex, and [opencode](https://opencode.ai).
+
+### Themes
+
+Four color schemes inspired by beloved developer tools — each with dark and light variants.
+
+| Claude | Tokyo Night | Gruvbox | Nord |
+|:------:|:-----------:|:-------:|:----:|
+| <img src="docs/theme-claude-dark.png" width="180"> | <img src="docs/theme-tokyoNight-dark.png" width="180"> | <img src="docs/theme-gruvbox-dark.png" width="180"> | <img src="docs/theme-nord-dark.png" width="180"> |
+
+Switch themes in Settings > Appearance > Color.
 
 ## Installation
 
@@ -52,8 +67,7 @@ Works with [Claude Code](https://docs.anthropic.com/en/docs/claude-code), Codex,
 **Homebrew:**
 
 ```bash
-brew tap st0012/cctop
-brew install --cask cctop
+brew install --cask st0012/cctop/cctop
 ```
 
 Or [download the latest release](https://github.com/st0012/cctop/releases/latest) — the app is signed and notarized by Apple.
@@ -114,9 +128,6 @@ It activates the app but cannot target a specific terminal tab. You'll need to f
 
 **How does cctop name sessions?**
 By default, the project directory name (e.g. `/path/to/my-app` shows as "my-app"). In Claude Code, you can rename a session with `/rename` and cctop picks that up.
-
-**My panel shrank to just the header bar — how do I get it back?**
-You activated compact mode (Cmd+M). Press Cmd+M again to return to the normal view. You can also click the header to temporarily expand and see your sessions. An amber underline under "cctop" indicates compact mode is active.
 
 **No sessions are showing up — what do I check?**
 First, make sure you restarted sessions after installing the plugin. Then check if session files exist: `ls ~/.cctop/sessions/`. If the directory is empty, the plugin isn't writing data — verify it's installed correctly (see Step 2). If files exist but the menubar shows nothing, try restarting the cctop app.

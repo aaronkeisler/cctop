@@ -1,45 +1,106 @@
+import AppKit
 import SwiftUI
+
+// MARK: - Window drag area
+
+extension Notification.Name {
+    static let panelDragEnded = Notification.Name("panelDragEnded")
+    static let resetPanelPosition = Notification.Name("resetPanelPosition")
+}
+
+enum PanelDragKeys {
+    static let originX = "x"
+    static let topY = "topY"
+}
+
+private func makeMoveCursor(color: NSColor) -> NSCursor {
+    let size = NSSize(width: 16, height: 16)
+    let image = NSImage(size: size, flipped: true) { _ in
+        guard let ctx = NSGraphicsContext.current?.cgContext else { return false }
+        let mid: CGFloat = 8
+        let arm: CGFloat = 5
+        let tip: CGFloat = 2.5
+
+        ctx.setStrokeColor(color.cgColor)
+        ctx.setLineWidth(1.2)
+        ctx.setLineCap(.round)
+        ctx.setLineJoin(.round)
+
+        // Cross lines
+        ctx.move(to: CGPoint(x: mid, y: mid - arm))
+        ctx.addLine(to: CGPoint(x: mid, y: mid + arm))
+        ctx.move(to: CGPoint(x: mid - arm, y: mid))
+        ctx.addLine(to: CGPoint(x: mid + arm, y: mid))
+
+        // Arrowheads: top, bottom, left, right
+        for (dx, dy) in [(0.0, -1.0), (0.0, 1.0), (-1.0, 0.0), (1.0, 0.0)] {
+            let tipPt = CGPoint(x: mid + dx * arm, y: mid + dy * arm)
+            ctx.move(to: CGPoint(x: tipPt.x - dy * tip, y: tipPt.y - dx * tip))
+            ctx.addLine(to: tipPt)
+            ctx.addLine(to: CGPoint(x: tipPt.x + dy * tip, y: tipPt.y + dx * tip))
+        }
+
+        ctx.strokePath()
+        return true
+    }
+    return NSCursor(image: image, hotSpot: NSPoint(x: 8, y: 8))
+}
+
+private let darkMoveCursor = makeMoveCursor(color: NSColor(white: 0.15, alpha: 1))
+private let lightMoveCursor = makeMoveCursor(color: NSColor(white: 0.9, alpha: 1))
+
+private class DragCursorView: NSView {
+    private var currentMoveCursor: NSCursor {
+        let isDark = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        return isDark ? lightMoveCursor : darkMoveCursor
+    }
+
+    override func resetCursorRects() {
+        addCursorRect(bounds, cursor: currentMoveCursor)
+    }
+
+    private var cursorTrackingArea: NSTrackingArea?
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let area = cursorTrackingArea { removeTrackingArea(area) }
+        let area = NSTrackingArea(
+            rect: bounds,
+            options: [.cursorUpdate, .activeAlways, .inVisibleRect],
+            owner: self
+        )
+        addTrackingArea(area)
+        cursorTrackingArea = area
+    }
+
+    override func cursorUpdate(with event: NSEvent) {
+        currentMoveCursor.set()
+    }
+}
+
+struct WindowDragArea: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let view = DragCursorView()
+        view.wantsLayer = true
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {}
+}
 
 struct HeaderView: View {
     let sessions: [Session]
-    var onTap: (() -> Void)?
-    var isCompactMode = false
-
-    static func statusCounts(
-        for sessions: [Session]
-    ) -> (permission: Int, attention: Int, working: Int, idle: Int) {
-        var permission = 0, attention = 0, working = 0, idle = 0
-        for session in sessions {
-            switch session.status {
-            case .idle: idle += 1
-            case .working, .compacting: working += 1
-            case .waitingPermission: permission += 1
-            case .waitingInput, .needsAttention: attention += 1
-            }
-        }
-        return (permission, attention, working, idle)
-    }
-
-    private var statusCounts: (permission: Int, attention: Int, working: Int, idle: Int) {
-        Self.statusCounts(for: sessions)
-    }
 
     var body: some View {
-        let counts = statusCounts
-        let content = HStack {
-            RoundedRectangle(cornerRadius: 6)
-                .fill(Color.amber)
-                .frame(width: 20, height: 20)
-                .overlay(Text("C").font(.system(size: 12, weight: .bold)).foregroundStyle(.white))
-            Text("cctop").font(.system(size: 14, weight: .semibold))
-                .overlay(alignment: .bottom) {
-                    if isCompactMode {
-                        RoundedRectangle(cornerRadius: 1)
-                            .fill(Color.amber)
-                            .frame(height: 2)
-                            .offset(y: 3)
-                    }
-                }
+        let counts = StatusCounts(sessions: sessions)
+
+        HStack(spacing: 6) {
+            RoundedRectangle(cornerRadius: 1.5)
+                .fill(headerBarColor(counts: counts))
+                .frame(width: 3, height: 14)
+            Text("cctop")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Color.textPrimary)
             Spacer()
             StatusChip(count: counts.permission, color: .red, categoryLabel: "need permission")
             StatusChip(count: counts.attention, color: Color.amber, categoryLabel: "need attention")
@@ -48,22 +109,19 @@ struct HeaderView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .contentShape(Rectangle())
-
-        if let onTap {
-            Button(action: onTap) { content }.buttonStyle(.plain)
-        } else {
-            content
+        .overlay(WindowDragArea())
+    }
+    private func headerBarColor(counts: StatusCounts) -> Color {
+        if counts.permission > 0 || counts.attention > 0 {
+            return Color.amber
         }
+        if counts.working > 0 {
+            return Color.statusGreen.opacity(0.5)
+        }
+        return Color.textMuted
     }
 }
 
 #Preview("Normal") {
     HeaderView(sessions: Session.qaShowcase).frame(width: 320).padding()
-}
-#Preview("Compact Mode") {
-    HeaderView(sessions: Session.qaShowcase, isCompactMode: true).frame(width: 320).padding()
-}
-#Preview("Compact Tappable") {
-    HeaderView(sessions: Session.qaShowcase, onTap: {}, isCompactMode: true).frame(width: 320).padding()
 }

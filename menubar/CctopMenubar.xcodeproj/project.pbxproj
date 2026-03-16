@@ -27,16 +27,24 @@
 		FT0000010000000000000001 /* WorkspaceFileTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FT0000020000000000000001 /* WorkspaceFileTests.swift */; };
 		FT0000010000000000000002 /* FocusTerminalTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FT0000020000000000000002 /* FocusTerminalTests.swift */; };
 		HMT000010000000000000001 /* HistoryManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = HMT000020000000000000001 /* HistoryManagerTests.swift */; };
-		JMT000010000000000000001 /* RefocusControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = JMT000020000000000000001 /* RefocusControllerTests.swift */; };
+		JMT000010000000000000001 /* NavigateControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = JMT000020000000000000001 /* NavigateControllerTests.swift */; };
 		G10000010000000000000001 /* FloatingPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = G10000020000000000000001 /* FloatingPanel.swift */; };
 		G10000030000000000000001 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = G10000040000000000000001 /* AppDelegate.swift */; };
 		H10000010000000000000001 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = H10000020000000000000001 /* AppSettings.swift */; };
+		FX0000010000000000000001 /* HookInputTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FX0000020000000000000001 /* HookInputTests.swift */; };
+		FX0000030000000000000001 /* HookInput.swift in Sources */ = {isa = PBXBuildFile; fileRef = P10000040000000000000001 /* HookInput.swift */; };
+		HH0000010000000000000001 /* HookHandlerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = HH0000020000000000000001 /* HookHandlerTests.swift */; };
+		HH0000030000000000000001 /* HookHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = P10000060000000000000001 /* HookHandler.swift */; };
+		HH0000050000000000000001 /* HookLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = P10000080000000000000001 /* HookLogger.swift */; };
 		HT0000010000000000000001 /* HookEventTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = HT0000020000000000000001 /* HookEventTests.swift */; };
 		J10000010000000000000001 /* SettingsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = J10000020000000000000001 /* SettingsSection.swift */; };
+		ATH000010000000000000001 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = ATH000020000000000000001 /* AppTheme.swift */; };
+		TMG000010000000000000001 /* ThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = TMG000020000000000000001 /* ThemeManager.swift */; };
 		K10000010000000000000001 /* Color+Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = K10000020000000000000001 /* Color+Theme.swift */; };
 		L10000010000000000000001 /* EmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = L10000020000000000000001 /* EmptyStateView.swift */; };
 		N10000010000000000000001 /* SessionStatus+UI.swift in Sources */ = {isa = PBXBuildFile; fileRef = N10000020000000000000001 /* SessionStatus+UI.swift */; };
 		AB0000010000000000000001 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0000020000000000000001 /* AboutView.swift */; };
+		MIR000010000000000000001 /* MenubarIconRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = MIR000020000000000000001 /* MenubarIconRenderer.swift */; };
 		OB0000010000000000000001 /* OpenCodeBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = OB0000020000000000000001 /* OpenCodeBanner.swift */; };
 		RP0000010000000000000001 /* RecentProject.swift in Sources */ = {isa = PBXBuildFile; fileRef = RP0000020000000000000001 /* RecentProject.swift */; };
 		RPM000010000000000000001 /* RecentProject+Mock.swift in Sources */ = {isa = PBXBuildFile; fileRef = RPM000020000000000000001 /* RecentProject+Mock.swift */; };
@@ -52,8 +60,7 @@
 		P10000070000000000000001 /* HookLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = P10000080000000000000001 /* HookLogger.swift */; };
 		P10000090000000000000001 /* Session.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000020000000000000001 /* Session.swift */; };
 		HM0000010000000000000001 /* HistoryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = HM0000020000000000000001 /* HistoryManager.swift */; };
-		JM0000010000000000000001 /* RefocusController.swift in Sources */ = {isa = PBXBuildFile; fileRef = JM0000020000000000000001 /* RefocusController.swift */; };
-		CM0000010000000000000001 /* CompactModeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CM0000020000000000000001 /* CompactModeController.swift */; };
+		JM0000010000000000000001 /* NavigateController.swift in Sources */ = {isa = PBXBuildFile; fileRef = JM0000020000000000000001 /* NavigateController.swift */; };
 		PC0000010000000000000001 /* PanelCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = PC0000020000000000000001 /* PanelCoordinator.swift */; };
 		PM0000010000000000000001 /* PluginManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = PM0000020000000000000001 /* PluginManager.swift */; };
 		Q10000010000000000000001 /* QASnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = Q10000020000000000000001 /* QASnapshotTests.swift */; };
@@ -66,9 +73,16 @@
 		T10000050000000000000002 /* SnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = T10000060000000000000002 /* SnapshotTests.swift */; };
 		T10000070000000000000002 /* AppSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = T10000080000000000000002 /* AppSettingsTests.swift */; };
 		PT0000010000000000000001 /* PanelToggleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = PT0000020000000000000001 /* PanelToggleTests.swift */; };
-		CMT000010000000000000001 /* CompactModeControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CMT000020000000000000001 /* CompactModeControllerTests.swift */; };
 		PCT000010000000000000001 /* PanelCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = PCT000020000000000000001 /* PanelCoordinatorTests.swift */; };
-		CST000010000000000000001 /* CompactModeScenarioTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CST000020000000000000001 /* CompactModeScenarioTests.swift */; };
+		NSN000010000000000000001 /* NSScreen+Notch.swift in Sources */ = {isa = PBXBuildFile; fileRef = NSN000020000000000000001 /* NSScreen+Notch.swift */; };
+		NSP000010000000000000001 /* NotchStatusPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = NSP000020000000000000001 /* NotchStatusPanel.swift */; };
+		NSV000010000000000000001 /* NotchStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = NSV000020000000000000001 /* NotchStatusView.swift */; };
+		NSC000010000000000000001 /* NotchStatusController.swift in Sources */ = {isa = PBXBuildFile; fileRef = NSC000020000000000000001 /* NotchStatusController.swift */; };
+		STC000010000000000000001 /* StatusColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = STC000020000000000000001 /* StatusColors.swift */; };
+		SCN000010000000000000001 /* StatusCounts.swift in Sources */ = {isa = PBXBuildFile; fileRef = SCN000020000000000000001 /* StatusCounts.swift */; };
+		MRT000010000000000000001 /* MenubarIconRendererTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = MRT000020000000000000001 /* MenubarIconRendererTests.swift */; };
+		SCT000010000000000000001 /* StatusCountsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = SCT000020000000000000001 /* StatusCountsTests.swift */; };
+		HVT000010000000000000001 /* StatusCountsSessionInitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = HVT000020000000000000001 /* StatusCountsSessionInitTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -101,17 +115,22 @@
 		FT0000020000000000000001 /* WorkspaceFileTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceFileTests.swift; sourceTree = "<group>"; };
 		FT0000020000000000000002 /* FocusTerminalTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusTerminalTests.swift; sourceTree = "<group>"; };
 		HMT000020000000000000001 /* HistoryManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryManagerTests.swift; sourceTree = "<group>"; };
-		JMT000020000000000000001 /* RefocusControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RefocusControllerTests.swift; sourceTree = "<group>"; };
+		JMT000020000000000000001 /* NavigateControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigateControllerTests.swift; sourceTree = "<group>"; };
 		G10000020000000000000001 /* FloatingPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingPanel.swift; sourceTree = "<group>"; };
 		G10000040000000000000001 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		H10000020000000000000001 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		FX0000020000000000000001 /* HookInputTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HookInputTests.swift; sourceTree = "<group>"; };
+		HH0000020000000000000001 /* HookHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HookHandlerTests.swift; sourceTree = "<group>"; };
 		HT0000020000000000000001 /* HookEventTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HookEventTests.swift; sourceTree = "<group>"; };
 		J10000020000000000000001 /* SettingsSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsSection.swift; sourceTree = "<group>"; };
+		ATH000020000000000000001 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
+		TMG000020000000000000001 /* ThemeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeManager.swift; sourceTree = "<group>"; };
 		K10000020000000000000001 /* Color+Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Theme.swift"; sourceTree = "<group>"; };
 		L10000020000000000000001 /* EmptyStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyStateView.swift; sourceTree = "<group>"; };
 		M10000010000000000000001 /* CctopMenubar.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = CctopMenubar.entitlements; sourceTree = "<group>"; };
 		N10000020000000000000001 /* SessionStatus+UI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SessionStatus+UI.swift"; sourceTree = "<group>"; };
 		AB0000020000000000000001 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
+		MIR000020000000000000001 /* MenubarIconRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenubarIconRenderer.swift; sourceTree = "<group>"; };
 		OB0000020000000000000001 /* OpenCodeBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenCodeBanner.swift; sourceTree = "<group>"; };
 		RP0000020000000000000001 /* RecentProject.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentProject.swift; sourceTree = "<group>"; };
 		RPM000020000000000000001 /* RecentProject+Mock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RecentProject+Mock.swift"; sourceTree = "<group>"; };
@@ -124,8 +143,7 @@
 		P10000060000000000000001 /* HookHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HookHandler.swift; sourceTree = "<group>"; };
 		P10000080000000000000001 /* HookLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HookLogger.swift; sourceTree = "<group>"; };
 		HM0000020000000000000001 /* HistoryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryManager.swift; sourceTree = "<group>"; };
-		JM0000020000000000000001 /* RefocusController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RefocusController.swift; sourceTree = "<group>"; };
-		CM0000020000000000000001 /* CompactModeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactModeController.swift; sourceTree = "<group>"; };
+		JM0000020000000000000001 /* NavigateController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigateController.swift; sourceTree = "<group>"; };
 		PC0000020000000000000001 /* PanelCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanelCoordinator.swift; sourceTree = "<group>"; };
 		PM0000020000000000000001 /* PluginManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginManager.swift; sourceTree = "<group>"; };
 		Q10000020000000000000001 /* QASnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QASnapshotTests.swift; sourceTree = "<group>"; };
@@ -138,9 +156,16 @@
 		T10000060000000000000002 /* SnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapshotTests.swift; sourceTree = "<group>"; };
 		T10000080000000000000002 /* AppSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsTests.swift; sourceTree = "<group>"; };
 		PT0000020000000000000001 /* PanelToggleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanelToggleTests.swift; sourceTree = "<group>"; };
-		CMT000020000000000000001 /* CompactModeControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactModeControllerTests.swift; sourceTree = "<group>"; };
 		PCT000020000000000000001 /* PanelCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanelCoordinatorTests.swift; sourceTree = "<group>"; };
-		CST000020000000000000001 /* CompactModeScenarioTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactModeScenarioTests.swift; sourceTree = "<group>"; };
+		NSN000020000000000000001 /* NSScreen+Notch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NSScreen+Notch.swift"; sourceTree = "<group>"; };
+		NSP000020000000000000001 /* NotchStatusPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchStatusPanel.swift; sourceTree = "<group>"; };
+		NSV000020000000000000001 /* NotchStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchStatusView.swift; sourceTree = "<group>"; };
+		NSC000020000000000000001 /* NotchStatusController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchStatusController.swift; sourceTree = "<group>"; };
+		STC000020000000000000001 /* StatusColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusColors.swift; sourceTree = "<group>"; };
+		SCN000020000000000000001 /* StatusCounts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusCounts.swift; sourceTree = "<group>"; };
+		MRT000020000000000000001 /* MenubarIconRendererTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenubarIconRendererTests.swift; sourceTree = "<group>"; };
+		SCT000020000000000000001 /* StatusCountsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusCountsTests.swift; sourceTree = "<group>"; };
+		HVT000020000000000000001 /* StatusCountsSessionInitTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusCountsSessionInitTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -185,9 +210,9 @@
 				E10000020000000000000001 /* FocusTerminal.swift */,
 				SP0000020000000000000001 /* SparkleUpdater.swift */,
 				PM0000020000000000000001 /* PluginManager.swift */,
-				JM0000020000000000000001 /* RefocusController.swift */,
-				CM0000020000000000000001 /* CompactModeController.swift */,
+				JM0000020000000000000001 /* NavigateController.swift */,
 				PC0000020000000000000001 /* PanelCoordinator.swift */,
+				NSC000020000000000000001 /* NotchStatusController.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -214,6 +239,7 @@
 				A10000090000000000000001 /* Views */,
 				A1000000A000000000000001 /* Services */,
 				P1000000F000000000000001 /* Hook */,
+				EXT000010000000000000001 /* Extensions */,
 			);
 			path = CctopMenubar;
 			sourceTree = "<group>";
@@ -237,10 +263,14 @@
 				N10000060000000000000001 /* Config.swift */,
 				F10000020000000000000001 /* Session+Mock.swift */,
 				H10000020000000000000001 /* AppSettings.swift */,
+				ATH000020000000000000001 /* AppTheme.swift */,
+				TMG000020000000000000001 /* ThemeManager.swift */,
 				K10000020000000000000001 /* Color+Theme.swift */,
 				RP0000020000000000000001 /* RecentProject.swift */,
 				RPM000020000000000000001 /* RecentProject+Mock.swift */,
 				EK0000020000000000000001 /* HostApp.swift */,
+				STC000020000000000000001 /* StatusColors.swift */,
+				SCN000020000000000000001 /* StatusCounts.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -260,6 +290,9 @@
 				RV0000020000000000000001 /* RecentProjectCardView.swift */,
 				OB0000020000000000000001 /* OpenCodeBanner.swift */,
 				AB0000020000000000000001 /* AboutView.swift */,
+				MIR000020000000000000001 /* MenubarIconRenderer.swift */,
+				NSP000020000000000000001 /* NotchStatusPanel.swift */,
+				NSV000020000000000000001 /* NotchStatusView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -285,18 +318,29 @@
 				Q10000020000000000000001 /* QASnapshotTests.swift */,
 				T10000080000000000000002 /* AppSettingsTests.swift */,
 				HT0000020000000000000001 /* HookEventTests.swift */,
+				FX0000020000000000000001 /* HookInputTests.swift */,
+				HH0000020000000000000001 /* HookHandlerTests.swift */,
 				SN0000040000000000000001 /* SessionNameLookupTests.swift */,
 				FK0000020000000000000001 /* ForkSessionTests.swift */,
 				FT0000020000000000000001 /* WorkspaceFileTests.swift */,
 				FT0000020000000000000002 /* FocusTerminalTests.swift */,
-				JMT000020000000000000001 /* RefocusControllerTests.swift */,
+				JMT000020000000000000001 /* NavigateControllerTests.swift */,
 				HMT000020000000000000001 /* HistoryManagerTests.swift */,
 				PT0000020000000000000001 /* PanelToggleTests.swift */,
-				CMT000020000000000000001 /* CompactModeControllerTests.swift */,
 				PCT000020000000000000001 /* PanelCoordinatorTests.swift */,
-				CST000020000000000000001 /* CompactModeScenarioTests.swift */,
+				MRT000020000000000000001 /* MenubarIconRendererTests.swift */,
+				SCT000020000000000000001 /* StatusCountsTests.swift */,
+				HVT000020000000000000001 /* StatusCountsSessionInitTests.swift */,
 			);
 			path = CctopMenubarTests;
+			sourceTree = "<group>";
+		};
+		EXT000010000000000000001 /* Extensions */ = {
+			isa = PBXGroup;
+			children = (
+				NSN000020000000000000001 /* NSScreen+Notch.swift */,
+			);
+			path = Extensions;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -422,24 +466,35 @@
 				G10000030000000000000001 /* AppDelegate.swift in Sources */,
 				H10000010000000000000001 /* AppSettings.swift in Sources */,
 				J10000010000000000000001 /* SettingsSection.swift in Sources */,
+				ATH000010000000000000001 /* AppTheme.swift in Sources */,
+				TMG000010000000000000001 /* ThemeManager.swift in Sources */,
 				K10000010000000000000001 /* Color+Theme.swift in Sources */,
 				L10000010000000000000001 /* EmptyStateView.swift in Sources */,
 				SP0000010000000000000001 /* SparkleUpdater.swift in Sources */,
 				PM0000010000000000000001 /* PluginManager.swift in Sources */,
 				HM0000010000000000000001 /* HistoryManager.swift in Sources */,
-				JM0000010000000000000001 /* RefocusController.swift in Sources */,
-				CM0000010000000000000001 /* CompactModeController.swift in Sources */,
+				JM0000010000000000000001 /* NavigateController.swift in Sources */,
 				PC0000010000000000000001 /* PanelCoordinator.swift in Sources */,
 				N10000010000000000000001 /* SessionStatus+UI.swift in Sources */,
 				N10000030000000000000001 /* HookEvent.swift in Sources */,
+				FX0000030000000000000001 /* HookInput.swift in Sources */,
+				HH0000030000000000000001 /* HookHandler.swift in Sources */,
+				HH0000050000000000000001 /* HookLogger.swift in Sources */,
 				N10000050000000000000001 /* Config.swift in Sources */,
 				SN0000050000000000000001 /* SessionNameLookup.swift in Sources */,
 				RP0000010000000000000001 /* RecentProject.swift in Sources */,
 				RV0000010000000000000001 /* RecentProjectCardView.swift in Sources */,
 				OB0000010000000000000001 /* OpenCodeBanner.swift in Sources */,
 				AB0000010000000000000001 /* AboutView.swift in Sources */,
+				MIR000010000000000000001 /* MenubarIconRenderer.swift in Sources */,
 				EK0000010000000000000001 /* HostApp.swift in Sources */,
 				RPM000010000000000000001 /* RecentProject+Mock.swift in Sources */,
+				NSN000010000000000000001 /* NSScreen+Notch.swift in Sources */,
+				NSP000010000000000000001 /* NotchStatusPanel.swift in Sources */,
+				NSV000010000000000000001 /* NotchStatusView.swift in Sources */,
+				NSC000010000000000000001 /* NotchStatusController.swift in Sources */,
+				STC000010000000000000001 /* StatusColors.swift in Sources */,
+				SCN000010000000000000001 /* StatusCounts.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -469,16 +524,19 @@
 				Q10000010000000000000001 /* QASnapshotTests.swift in Sources */,
 				T10000070000000000000002 /* AppSettingsTests.swift in Sources */,
 				HT0000010000000000000001 /* HookEventTests.swift in Sources */,
+				FX0000010000000000000001 /* HookInputTests.swift in Sources */,
+				HH0000010000000000000001 /* HookHandlerTests.swift in Sources */,
 				SN0000030000000000000001 /* SessionNameLookupTests.swift in Sources */,
 				FK0000010000000000000001 /* ForkSessionTests.swift in Sources */,
 				FT0000010000000000000001 /* WorkspaceFileTests.swift in Sources */,
 				FT0000010000000000000002 /* FocusTerminalTests.swift in Sources */,
-				JMT000010000000000000001 /* RefocusControllerTests.swift in Sources */,
+				JMT000010000000000000001 /* NavigateControllerTests.swift in Sources */,
 				HMT000010000000000000001 /* HistoryManagerTests.swift in Sources */,
 				PT0000010000000000000001 /* PanelToggleTests.swift in Sources */,
-				CMT000010000000000000001 /* CompactModeControllerTests.swift in Sources */,
 				PCT000010000000000000001 /* PanelCoordinatorTests.swift in Sources */,
-				CST000010000000000000001 /* CompactModeScenarioTests.swift in Sources */,
+				MRT000010000000000000001 /* MenubarIconRendererTests.swift in Sources */,
+				SCT000010000000000000001 /* StatusCountsTests.swift in Sources */,
+				HVT000010000000000000001 /* StatusCountsSessionInitTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -561,7 +619,7 @@
 				CODE_SIGN_ENTITLEMENTS = CctopMenubar/CctopMenubar.entitlements;
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 801;
+				CURRENT_PROJECT_VERSION = 1100;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = CctopMenubar/Info.plist;
@@ -570,7 +628,7 @@
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSMainStoryboardFile = "";
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
-				MARKETING_VERSION = 0.8.1;
+				MARKETING_VERSION = 0.11.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.st0012.CctopMenubar;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) ENABLE_SPARKLE";
@@ -586,7 +644,7 @@
 				CODE_SIGN_ENTITLEMENTS = CctopMenubar/CctopMenubar.entitlements;
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 801;
+				CURRENT_PROJECT_VERSION = 1100;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = CctopMenubar/Info.plist;
@@ -595,7 +653,7 @@
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSMainStoryboardFile = "";
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
-				MARKETING_VERSION = 0.8.1;
+				MARKETING_VERSION = 0.11.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.st0012.CctopMenubar;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) ENABLE_SPARKLE";
@@ -608,9 +666,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 801;
+				CURRENT_PROJECT_VERSION = 1100;
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 0.8.1;
+				MARKETING_VERSION = 0.11.0;
 				PRODUCT_NAME = "cctop-hook";
 				SWIFT_VERSION = 5.0;
 			};
@@ -620,9 +678,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 801;
+				CURRENT_PROJECT_VERSION = 1100;
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 0.8.1;
+				MARKETING_VERSION = 0.11.0;
 				PRODUCT_NAME = "cctop-hook";
 				SWIFT_VERSION = 5.0;
 			};
@@ -633,10 +691,10 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 801;
+				CURRENT_PROJECT_VERSION = 1100;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 0.8.1;
+				MARKETING_VERSION = 0.11.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.st0012.CctopMenubarTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -650,10 +708,10 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 801;
+				CURRENT_PROJECT_VERSION = 1100;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 0.8.1;
+				MARKETING_VERSION = 0.11.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.st0012.CctopMenubarTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;

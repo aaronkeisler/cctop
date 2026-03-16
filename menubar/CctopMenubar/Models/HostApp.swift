@@ -11,6 +11,7 @@ enum HostApp {
     case warp
     case ghostty
     case terminal
+    case ghostty
     case unknown
 
     /// Match program name to a HostApp.
@@ -40,6 +41,7 @@ enum HostApp {
         case .warp: return "dev.warp.Warp-Stable"
         case .ghostty: return "com.mitchellh.ghostty"
         case .terminal: return "com.apple.Terminal"
+        case .ghostty: return "com.mitchellh.ghostty"
         case .unknown: return nil
         }
     }
@@ -55,6 +57,7 @@ enum HostApp {
         case .warp: return "warp"
         case .ghostty: return "ghostty"
         case .terminal: return "terminal"
+        case .ghostty: return "ghostty"
         case .unknown: return nil
         }
     }
@@ -72,7 +75,7 @@ enum HostApp {
     var usesWorkspaceFile: Bool {
         switch self {
         case .vscode, .cursor, .windsurf, .zed: return true
-        case .iterm2, .warp, .ghostty, .terminal, .unknown: return false
+        case .iterm2, .warp, .terminal, .ghostty, .unknown: return false
         }
     }
 

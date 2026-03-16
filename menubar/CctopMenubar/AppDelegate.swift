@@ -1,9 +1,11 @@
+// swiftlint:disable file_length
 import AppKit
 import Combine
 import KeyboardShortcuts
 import SwiftUI
 import UserNotifications
 
+// swiftlint:disable:next type_body_length
 class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
     private var statusItem: NSStatusItem!
     private var panel: FloatingPanel!
@@ -11,35 +13,49 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
     private var updater: UpdaterBase!
     private var pluginManager: PluginManager!
     private var historyManager: HistoryManager!
-    private var refocusController = RefocusController()
-    private var compactController = CompactModeController()
+    private var navigateController = NavigateController()
+    private var notchController: NotchStatusController!
     private var navKeyMonitor: Any?
     private var previousApp: NSRunningApplication?
     private var lastExternalApp: NSRunningApplication?
     private var panelMode: PanelMode = .hidden
     private var screenChangeWork: DispatchWorkItem?
+    private var notchVisibilityWork: DispatchWorkItem?
     private var suppressResize = false
+    private var lastRenderedCounts: StatusCounts?
+    private var hasNotch = false
+    private var clickLocation: NSPoint?
     private var cancellables: Set<AnyCancellable> = []
     @AppStorage("appearanceMode") var appearanceMode: String = "system"
+
+    private enum PanelPositionKeys {
+        static let originX = "panelCustomX"
+        static let topY = "panelCustomTopY"
+    }
+
+    private var hasCustomPanelPosition: Bool {
+        UserDefaults.standard.object(forKey: PanelPositionKeys.originX) != nil
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         UserDefaults.standard.register(defaults: ["notificationsEnabled": true])
         installHookBinaryIfNeeded()
         UNUserNotificationCenter.current().delegate = self
+        notchController = NotchStatusController()
         historyManager = HistoryManager()
         sessionManager = SessionManager(historyManager: historyManager)
         updater = makeUpdater()
         pluginManager = PluginManager()
 
         setupStatusItem()
+        hasNotch = NSScreen.builtin?.hasPhysicalNotch == true
 
         let contentView = PanelContentView(
             sessionManager: sessionManager,
             historyManager: historyManager,
             updater: updater,
             pluginManager: pluginManager,
-            refocus: refocusController,
-            compactController: compactController
+            navigate: navigateController
         )
         let hostingView = NSHostingView(rootView: contentView)
         hostingView.wantsLayer = true
@@ -58,20 +74,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
         applyAppearance()
         registerShortcuts()
         observeSessionUpdates()
+        observeThemeChanges()
     }
 
     @MainActor private func registerShortcuts() {
         KeyboardShortcuts.onKeyUp(for: .togglePanel) { [weak self] in self?.togglePanel() }
-        KeyboardShortcuts.onKeyUp(for: .refocus) { [weak self] in
-            self?.handleEvent(.refocusShortcut)
+        KeyboardShortcuts.onKeyUp(for: .navigate) { [weak self] in
+            self?.handleEvent(.navigateShortcut)
         }
-        refocusController.didConfirmSubject
+        navigateController.didConfirmSubject
             .receive(on: RunLoop.main)
-            .sink { [weak self] in self?.handleEvent(.refocusConfirmed) }
-            .store(in: &cancellables)
-        compactController.objectWillChange
-            .receive(on: RunLoop.main)
-            .sink { [weak self] _ in DispatchQueue.main.async { self?.resizePanel(animate: true) } }
+            .sink { [weak self] in self?.handleEvent(.navigateConfirmed) }
             .store(in: &cancellables)
         registerObservers()
     }
@@ -93,11 +106,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
             self?.lastExternalApp = app
         }
         nc.addObserver(
-            forName: .panelHeaderClicked, object: nil, queue: .main
-        ) { [weak self] _ in
-            self?.handleEvent(.headerClicked)
-        }
-        nc.addObserver(
             forName: NSApplication.didResignActiveNotification, object: nil, queue: .main
         ) { [weak self] _ in
             self?.handleEvent(.appLostFocus)
@@ -107,25 +115,68 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
         ) { [weak self] _ in
             self?.handleScreenChange()
         }
+        NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.updateNotchVisibility()
+        }
+        nc.addObserver(
+            forName: .notchPillClicked, object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.togglePanel()
+        }
+        nc.addObserver(
+            forName: .panelDragEnded, object: nil, queue: .main
+        ) { [weak self] notification in
+            guard let originX = notification.userInfo?[PanelDragKeys.originX] as? CGFloat,
+                  let topY = notification.userInfo?[PanelDragKeys.topY] as? CGFloat else { return }
+            self?.saveCustomPanelPosition(originX: originX, topY: topY)
+        }
+        nc.addObserver(
+            forName: .resetPanelPosition, object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.clearCustomPanelPosition()
+            self?.resetPanelToCurrentScreen(animate: true)
+        }
     }
 
     @MainActor private func observeSessionUpdates() {
         sessionManager.$sessions
             .receive(on: RunLoop.main)
             .sink { [weak self] sessions in
-                let count = sessions.filter { $0.status.needsAttention }.count
-                self?.statusItem.button?.title = count > 0 ? "\(count)" : ""
-                let a11yLabel = count > 0
-                    ? "cctop, \(count) session\(count == 1 ? "" : "s") need attention"
-                    : "cctop, \(sessions.count) session\(sessions.count == 1 ? "" : "s")"
-                self?.statusItem.button?.setAccessibilityLabel(a11yLabel)
-                if self?.panel.isVisible == true {
+                guard let self else { return }
+                let counts = StatusCounts(sessions: sessions)
+
+                if counts != self.lastRenderedCounts {
+                    self.refreshStatusDisplay(counts: counts)
+                }
+
+                if self.panel.isVisible == true {
                     DispatchQueue.main.async { [weak self] in
                         self?.resizePanel(animate: true)
                     }
                 }
             }
             .store(in: &cancellables)
+    }
+
+    @MainActor private func observeThemeChanges() {
+        ThemeManager.shared.$current
+            .dropFirst() // skip initial value
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                guard let self, let counts = self.lastRenderedCounts else { return }
+                self.refreshStatusDisplay(counts: counts)
+            }
+            .store(in: &cancellables)
+    }
+
+    @MainActor private func refreshStatusDisplay(counts: StatusCounts) {
+        lastRenderedCounts = counts
+        statusItem.button?.image = MenubarIconRenderer.render(counts: counts)
+        notchController.update(counts: counts)
+        updateNotchVisibility()
+        statusItem.button?.setAccessibilityLabel(counts.accessibilityLabel)
     }
 
     private func setupStatusItem() {
@@ -140,19 +191,68 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
     }
 
     @MainActor @objc private func togglePanel() {
+        clickLocation = NSEvent.mouseLocation
         handleEvent(.menubarIconClicked(appIsActive: NSApp.isActive))
     }
 
-    private func applyAppearance() {
-        let mode = AppearanceMode(rawValue: appearanceMode) ?? .system
-        switch mode {
-        case .system:
-            panel?.appearance = nil
-        case .light:
-            panel?.appearance = NSAppearance(named: .aqua)
-        case .dark:
-            panel?.appearance = NSAppearance(named: .darkAqua)
+    /// Whether the status item is hidden behind the notch.
+    private var isStatusItemOccluded: Bool {
+        guard let screen = NSScreen.builtin, screen.hasPhysicalNotch else { return false }
+        guard let window = statusItem.button?.window, window.frame.width > 0 else { return true }
+
+        // macOS may keep the window but stop rendering it when space is tight
+        if !window.occlusionState.contains(.visible) { return true }
+
+        let visibleMinX = screen.frame.maxX - (screen.auxiliaryTopRightArea?.width ?? 0)
+        return window.frame.minX < visibleMinX
+    }
+
+    /// Show notch panel when the menubar icon is hidden behind the notch.
+    @MainActor private func updateNotchVisibility(immediate: Bool = false) {
+        notchVisibilityWork?.cancel()
+        guard hasNotch else {
+            notchController.tearDown(); return
         }
+        let counts = lastRenderedCounts ?? .zero
+        let show: () -> Void = { [weak self] in
+            guard let self, self.hasNotch, let screen = NSScreen.builtin,
+                  self.isStatusItemOccluded else {
+                self?.notchController.tearDown(); return
+            }
+            self.notchController.showOnScreen(screen, counts: counts)
+        }
+        guard !immediate else { show(); return }
+        let work = DispatchWorkItem(block: show)
+        notchVisibilityWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: work)
+    }
+
+    private func applyAppearance() {
+        switch AppearanceMode(rawValue: appearanceMode) ?? .system {
+        case .system: panel?.appearance = nil
+        case .light: panel?.appearance = NSAppearance(named: .aqua)
+        case .dark: panel?.appearance = NSAppearance(named: .darkAqua)
+        }
+    }
+
+    // MARK: - Custom panel position
+
+    private func saveCustomPanelPosition(originX: CGFloat, topY: CGFloat) {
+        UserDefaults.standard.set(originX, forKey: PanelPositionKeys.originX)
+        UserDefaults.standard.set(topY, forKey: PanelPositionKeys.topY)
+    }
+
+    private func clearCustomPanelPosition() {
+        UserDefaults.standard.removeObject(forKey: PanelPositionKeys.originX)
+        UserDefaults.standard.removeObject(forKey: PanelPositionKeys.topY)
+    }
+
+    private func savedPanelPosition() -> (originX: CGFloat, topY: CGFloat)? {
+        guard let originX = UserDefaults.standard.object(forKey: PanelPositionKeys.originX) as? Double else {
+            return nil
+        }
+        let topY = UserDefaults.standard.double(forKey: PanelPositionKeys.topY)
+        return (originX: CGFloat(originX), topY: CGFloat(topY))
     }
 
     func userNotificationCenter(
@@ -177,12 +277,117 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
         completionHandler([.banner, .sound])
     }
 
-    private func positionPanel(animate: Bool = false) {
-        guard let button = statusItem.button, let buttonWindow = button.window else { return }
-        let screenRect = buttonWindow.convertToScreen(button.convert(button.bounds, to: nil))
+    @MainActor private func positionPanel(animate: Bool = false) {
+        if let saved = savedPanelPosition(), let (width, height) = panelFittingSize() {
+            // If clicked on a different screen than the saved position, ignore saved position
+            if let loc = clickLocation,
+               let clickScreen = NSScreen.screens.first(where: { NSMouseInRect(loc, $0.frame, false) }) {
+                let savedPoint = NSPoint(x: saved.originX, y: saved.topY)
+                if !clickScreen.frame.contains(savedPoint) {
+                    positionPanelAtAnchor(animate: animate)
+                    return
+                }
+            }
+            let clamped = clampToScreen(
+                originX: saved.originX, topY: saved.topY,
+                width: width, height: height
+            )
+            let newFrame = NSRect(
+                x: clamped.originX, y: clamped.topY - height,
+                width: width, height: height
+            )
+            setPanelFrame(newFrame, animate: animate)
+        } else {
+            positionPanelAtAnchor(animate: animate)
+        }
+    }
+
+    /// The screen-space rect of the anchor (notch pill or menubar icon).
+    @MainActor private func anchorRect() -> NSRect? {
+        if let pillFrame = notchController.pillFrame {
+            return pillFrame
+        } else if let button = statusItem.button, let buttonWindow = button.window {
+            return buttonWindow.convertToScreen(button.convert(button.bounds, to: nil))
+        }
+        return nil
+    }
+
+    /// Reset panel position on double-click. If the panel is on the same screen
+    /// as the anchor (menubar icon / notch pill), snap to anchor. Otherwise, snap
+    /// to the top-center of the panel's current screen so it doesn't jump across screens.
+    @MainActor private func resetPanelToCurrentScreen(animate: Bool = false) {
         guard let (width, height) = panelFittingSize() else { return }
-        let newFrame = NSRect(x: screenRect.midX - width / 2, y: screenRect.minY - height - 4, width: width, height: height)
+
+        let anchorScreen = anchorRect().flatMap { rect in
+            NSScreen.screens.first { $0.frame.contains(rect.origin) }
+        }
+        let panelScreen = panel.screen ?? NSScreen.main
+
+        if anchorScreen == panelScreen {
+            positionPanelAtAnchor(animate: animate)
+            return
+        }
+        guard let vf = panelScreen?.visibleFrame else {
+            positionPanelAtAnchor(animate: animate)
+            return
+        }
+        let panelX = max(vf.minX + 4, min(vf.midX - width / 2, vf.maxX - width - 4))
+        let newFrame = NSRect(x: panelX, y: vf.maxY - 4 - height, width: width, height: height)
         setPanelFrame(newFrame, animate: animate)
+    }
+
+    @MainActor private func positionPanelAtAnchor(animate: Bool = false) {
+        guard let (width, height) = panelFittingSize() else { return }
+
+        let anchor: NSRect
+        let targetScreen: NSScreen?
+
+        if let buttonAnchor = anchorRect() {
+            let anchorScreen = NSScreen.screens.first { $0.frame.contains(buttonAnchor.origin) }
+            let clickScreen = clickLocation.flatMap { loc in
+                NSScreen.screens.first { NSMouseInRect(loc, $0.frame, false) }
+            }
+            if let click = clickScreen, click != anchorScreen, let loc = clickLocation {
+                // Clicked on a different screen — synthesize anchor at the click X position
+                anchor = NSRect(
+                    x: loc.x - 10, y: click.visibleFrame.maxY - 22,
+                    width: 20, height: 22
+                )
+                targetScreen = click
+            } else {
+                anchor = buttonAnchor
+                targetScreen = anchorScreen
+            }
+        } else {
+            return
+        }
+
+        var panelX = anchor.midX - width / 2
+        if let visibleFrame = (targetScreen ?? NSScreen.main)?.visibleFrame {
+            panelX = max(visibleFrame.minX + 4, min(panelX, visibleFrame.maxX - width - 4))
+        }
+
+        let newFrame = NSRect(
+            x: panelX, y: anchor.minY - height - 4,
+            width: width, height: height
+        )
+        setPanelFrame(newFrame, animate: animate)
+    }
+
+    private func clampToScreen(
+        originX: CGFloat, topY: CGFloat, width: CGFloat, height: CGFloat
+    ) -> (originX: CGFloat, topY: CGFloat) {
+        let point = NSPoint(x: originX, y: topY)
+        let panelRect = NSRect(x: originX, y: topY - height, width: width, height: height)
+        let screens = NSScreen.screens
+        let screen = screens.first { $0.frame.contains(point) }
+                     ?? screens.first { $0.visibleFrame.intersects(panelRect) }
+                     ?? NSScreen.main
+        guard let vf = screen?.visibleFrame else { return (originX, topY) }
+        let margin: CGFloat = 4
+        let clampedX = max(vf.minX + margin, min(originX, vf.maxX - width - margin))
+        let clampedTopY = max(vf.minY + height + margin, min(topY, vf.maxY - margin))
+        return (clampedX, clampedTopY)
     }
 
     @MainActor private func handleScreenChange() {
@@ -191,8 +396,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
         let work = DispatchWorkItem { [weak self] in
             guard let self else { return }
             self.suppressResize = false
+            self.hasNotch = NSScreen.builtin?.hasPhysicalNotch == true
+            self.refreshStatusDisplay(counts: StatusCounts(sessions: self.sessionManager.sessions))
             guard self.panel.isVisible else { return }
             self.positionPanel(animate: false)
+            // Update saved position if it was clamped to new screen bounds
+            if self.hasCustomPanelPosition {
+                let frame = self.panel.frame
+                self.saveCustomPanelPosition(originX: frame.origin.x, topY: frame.maxY)
+            }
         }
         screenChangeWork = work
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: work)
@@ -202,14 +414,27 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
         guard !suppressResize else { return }
         guard let (width, height) = panelFittingSize() else { return }
         let oldFrame = panel.frame
-        let newFrame = NSRect(x: oldFrame.midX - width / 2, y: oldFrame.maxY - height, width: width, height: height)
+        let newFrame: NSRect
+        if hasCustomPanelPosition {
+            // Keep top-left corner stable
+            newFrame = NSRect(
+                x: oldFrame.origin.x, y: oldFrame.maxY - height,
+                width: width, height: height
+            )
+        } else {
+            // Keep midX centered, top edge stable
+            newFrame = NSRect(
+                x: oldFrame.midX - width / 2, y: oldFrame.maxY - height,
+                width: width, height: height
+            )
+        }
         setPanelFrame(newFrame, animate: animate)
     }
 
     private func panelFittingSize() -> (width: CGFloat, height: CGFloat)? {
         panel.contentView?.layout()
-        guard let fittingSize = panel.contentView?.fittingSize else { return nil }
-        return (max(fittingSize.width, 320), min(fittingSize.height, 600))
+        guard let size = panel.contentView?.fittingSize else { return nil }
+        return (max(size.width, 320), min(size.height, 600))
     }
 
     private func setPanelFrame(_ frame: NSRect, animate: Bool) {
@@ -224,7 +449,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
         }
     }
 }
-
 // MARK: - PanelCoordinator dispatch
 
 private let navKeyMap: [UInt16: PanelNavAction] = [
@@ -240,33 +464,30 @@ private let navKeyMap: [UInt16: PanelNavAction] = [
 extension AppDelegate {
     @MainActor @discardableResult
     func handleEvent(_ event: PanelEvent) -> Bool {
-        let panelState = PanelState(
-            mode: panelMode,
-            compactPreference: compactController.compactMode
-        )
+        let panelState = PanelState(mode: panelMode)
         let result = PanelCoordinator.handle(event: event, state: panelState)
         panelMode = result.state.mode
         execute(result.actions)
-        compactController.compactMode = result.state.compactPreference
-        compactController.syncVisualState(panelMode)
         return result.eventConsumed
     }
 
-    // swiftlint:disable:next cyclomatic_complexity
     @MainActor private func execute(_ actions: [PanelAction]) {
         for action in actions {
             switch action {
             case .showPanel:
+                notchVisibilityWork?.cancel()
                 panel.makeKeyAndOrderFront(nil)
                 // Re-position after SwiftUI layout settles
                 DispatchQueue.main.async { [weak self] in
                     self?.positionPanel()
+                    self?.clickLocation = nil
                 }
             case .dismissPanel:
                 panel.orderOut(nil)
                 previousApp = nil
                 stopNavKeyMonitor()
-            case .refocusPanel:
+                updateNotchVisibility(immediate: true)
+            case .navigatePanel:
                 panel.makeKeyAndOrderFront(nil)
             case .positionPanel:
                 positionPanel()
@@ -287,27 +508,25 @@ extension AppDelegate {
                 if let prev = previousApp, prev != NSRunningApplication.current {
                     lastExternalApp = prev
                 }
-            case .startRefocusMode(let panelWasClosed):
-                refocusController.activate(
+            case .startNavigateMode(let panelWasClosed):
+                navigateController.activate(
                     sessions: sessionManager.sessions,
                     previousApp: NSWorkspace.shared.frontmostApplication,
                     panelWasClosed: panelWasClosed
                 )
-                refocusController.startTimeout { [weak self] in
-                    self?.handleEvent(.refocusTimedOut)
+                navigateController.startTimeout { [weak self] in
+                    self?.handleEvent(.navigateTimedOut)
                 }
-            case .endRefocusMode:
-                refocusController.deactivate()
-            case .persistCompactMode:
-                break // Handled elsewhere: persistence via @AppStorage
+            case .endNavigateMode:
+                navigateController.deactivate()
             }
         }
     }
 
     @MainActor private func jumpToSession(index: Int) {
-        guard index < refocusController.frozenSessions.count else { return }
-        focusTerminal(session: refocusController.frozenSessions[index])
-        handleEvent(.refocusConfirmed)
+        guard index < navigateController.frozenSessions.count else { return }
+        focusTerminal(session: navigateController.frozenSessions[index])
+        handleEvent(.navigateConfirmed)
     }
 
     private func startNavKeyMonitor() {
@@ -315,16 +534,10 @@ extension AppDelegate {
         navKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self, self.panel.isVisible else { return event }
 
-            // Refocus: digit keys jump to session
-            if self.refocusController.isActive,
+            // Navigate: digit keys jump to session
+            if self.navigateController.isActive,
                let char = event.characters, let digit = Int(char), digit >= 1, digit <= 9 {
                 DispatchQueue.main.async { self.jumpToSession(index: digit - 1) }
-                return nil
-            }
-
-            // Cmd+M toggles compact mode (keyCode 46 = 'm')
-            if event.modifierFlags.contains(.command) && event.keyCode == 46 {
-                DispatchQueue.main.async { self.handleEvent(.cmdM) }
                 return nil
             }
 
@@ -336,14 +549,14 @@ extension AppDelegate {
 
             // Navigation keys
             if let navAction = navKeyMap[event.keyCode] {
-                if self.refocusController.isActive { self.refocusController.cancelTimeout() }
+                if self.navigateController.isActive { self.navigateController.cancelTimeout() }
                 let consumed = self.handleEvent(.navKey(navAction))
                 return consumed ? nil : event
             }
 
-            // Refocus: any other key exits
-            if self.refocusController.isActive {
-                DispatchQueue.main.async { self.handleEvent(.unrecognizedKeyDuringRefocus) }
+            // Navigate: any other key exits
+            if self.navigateController.isActive {
+                DispatchQueue.main.async { self.handleEvent(.unrecognizedKeyDuringNavigate) }
                 return nil
             }
 
@@ -359,11 +572,10 @@ extension AppDelegate {
     }
 
     private func postNavAction(_ action: PanelNavAction) {
-        refocusController.navActionSubject.send(action)
+        navigateController.navActionSubject.send(action)
     }
 }
 // MARK: - Hook binary installation
-
 extension AppDelegate {
     /// Symlinks cctop-hook from the app bundle into ~/.cctop/bin/ so hooks can find it.
     func installHookBinaryIfNeeded() {

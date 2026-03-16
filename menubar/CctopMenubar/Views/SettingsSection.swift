@@ -6,31 +6,89 @@ struct AmberSegmentedPicker<Value: Hashable>: View {
     let options: [(value: Value, label: String)]
     @Binding var selection: Value
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 2) {
             ForEach(options.indices, id: \.self) { index in
-                let option = options[index]
-                let isSelected = selection == option.value
-                Button {
-                    withAnimation(.easeOut(duration: 0.15)) { selection = option.value }
-                } label: {
-                    Text(option.label)
-                        .font(.system(size: 12, weight: .semibold))
-                        .frame(maxWidth: .infinity).padding(.vertical, 5)
-                        .foregroundStyle(isSelected ? Color.segmentActiveText : Color.segmentText)
-                        .background(RoundedRectangle(cornerRadius: 5)
-                            .fill(isSelected ? Color.amber : Color.clear))
-                        .contentShape(Rectangle())
-                }.buttonStyle(.plain)
+                SegmentButton(
+                    label: options[index].label,
+                    isSelected: selection == options[index].value
+                ) {
+                    withAnimation(.easeOut(duration: 0.15)) { selection = options[index].value }
+                }
             }
         }
         .padding(2).background(Color.segmentBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .clipShape(RoundedRectangle(cornerRadius: 5))
+    }
+}
+
+private struct SegmentButton: View {
+    let label: String
+    let isSelected: Bool
+    let action: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            Text(label)
+                .font(.system(size: 10, weight: .medium))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .foregroundStyle(foregroundColor)
+                .background(RoundedRectangle(cornerRadius: 3)
+                    .fill(backgroundColor))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
+    }
+
+    private var foregroundColor: Color {
+        if isSelected { return Color.segmentActiveText }
+        if isHovered { return Color.segmentActiveText.opacity(0.7) }
+        return Color.segmentText
+    }
+
+    private var backgroundColor: Color {
+        if isSelected { return Color.textPrimary.opacity(0.1) }
+        if isHovered { return Color.textPrimary.opacity(0.05) }
+        return .clear
+    }
+}
+
+struct ShortcutBadge: View {
+    let name: KeyboardShortcuts.Name
+    @State private var showRecorder = false
+    @State private var isHovered = false
+
+    var body: some View {
+        Button { showRecorder.toggle() } label: {
+            if let shortcut = KeyboardShortcuts.getShortcut(for: name) {
+                Text(shortcut.description)
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .foregroundStyle(isHovered ? Color.segmentActiveText : Color.textSecondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.textPrimary.opacity(isHovered ? 0.12 : 0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 3))
+            } else {
+                Text("Record Shortcut")
+                    .font(.system(size: 10))
+                    .foregroundStyle(isHovered ? Color.textPrimary : Color.textMuted)
+            }
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
+        .popover(isPresented: $showRecorder) {
+            KeyboardShortcuts.Recorder("", name: name)
+                .padding(8)
+        }
     }
 }
 
 struct SettingsSection: View {
     @ObservedObject var updater: UpdaterBase
     @ObservedObject var pluginManager: PluginManager
+    @ObservedObject private var themeManager = ThemeManager.shared
     @AppStorage("appearanceMode") private var appearanceMode = "system"
     @AppStorage("notificationsEnabled") private var notificationsEnabled = true
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
@@ -44,6 +102,8 @@ struct SettingsSection: View {
     var body: some View {
         VStack(spacing: 0) {
             updateSection
+
+            sectionHeader("Tools")
             MonitoredToolsView(
                 pluginManager: pluginManager,
                 codexJustInstalled: $codexJustInstalled,
@@ -53,100 +113,83 @@ struct SettingsSection: View {
                 opencodeInstallFailed: $opencodeInstallFailed,
                 opencodeRemoveHovered: $opencodeRemoveHovered
             )
-            Divider().padding(.horizontal, 14)
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Appearance")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(Color.textSecondary)
-                AmberSegmentedPicker(
-                    options: AppearanceMode.allCases.map { ($0.rawValue, $0.label) },
-                    selection: $appearanceMode
-                )
+            Divider().padding(.horizontal, 8)
+
+            sectionHeader("Appearance")
+            settingsRow("Color") {
+                let binding = Binding(get: { themeManager.current }, set: { themeManager.setTheme($0) })
+                AmberSegmentedPicker(options: AppTheme.allCases.map { ($0, $0.displayName) }, selection: binding)
             }
-            .padding(.horizontal, 14)
-            .padding(.top, 12)
-            .padding(.bottom, 10)
-
-            Divider().padding(.horizontal, 14)
-
+            settingsRow("Mode") {
+                AmberSegmentedPicker(options: AppearanceMode.allCases.map { ($0.rawValue, $0.label) }, selection: $appearanceMode)
+            }
+            Divider().padding(.horizontal, 8)
+            sectionHeader("Shortcuts")
+            settingsRow("Toggle Panel") {
+                ShortcutBadge(name: .togglePanel)
+            }
             HStack {
-                Text("Toggle Shortcut")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(Color.textSecondary)
-                Spacer()
-                KeyboardShortcuts.Recorder("", name: .togglePanel)
-            }
-            .padding(.horizontal, 14)
-            .padding(.top, 10)
-            .padding(.bottom, 10)
-
-            Divider().padding(.horizontal, 14)
-
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text("Refocus Shortcut")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(Color.textSecondary)
-                    Spacer()
-                    KeyboardShortcuts.Recorder("", name: .refocus)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Navigate")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(Color.textPrimary)
+                    Text("Jump to sessions by number")
+                        .font(.system(size: 10))
+                        .foregroundStyle(Color.textMuted)
                 }
-                Text("Bring up the panel and jump to sessions by number.")
-                    .font(.system(size: 10))
-                    .foregroundStyle(Color.textMuted)
+                Spacer()
+                ShortcutBadge(name: .navigate)
             }
             .padding(.horizontal, 14)
-            .padding(.top, 10)
-            .padding(.bottom, 10)
+            .padding(.vertical, 7)
+            Divider().padding(.horizontal, 8)
 
-            Divider().padding(.horizontal, 14)
-
-            Toggle(isOn: $launchAtLogin) {
-                Text("Launch at Login")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(Color.textSecondary)
+            sectionHeader("General")
+            settingsRow("Launch at Login") {
+                Toggle("", isOn: $launchAtLogin)
+                    .toggleStyle(.switch).controlSize(.mini)
+                    .labelsHidden()
             }
-            .toggleStyle(.switch)
-            .controlSize(.mini)
-            .padding(.horizontal, 14)
-            .padding(.top, 10)
-            .padding(.bottom, 12)
             .onChange(of: launchAtLogin) { newValue in
                 do {
-                    if newValue {
-                        try SMAppService.mainApp.register()
-                    } else {
-                        try SMAppService.mainApp.unregister()
-                    }
-                } catch {
-                    launchAtLogin = SMAppService.mainApp.status == .enabled
-                }
+                    if newValue { try SMAppService.mainApp.register()
+                    } else { try SMAppService.mainApp.unregister() }
+                } catch { launchAtLogin = SMAppService.mainApp.status == .enabled }
             }
-
-            Divider().padding(.horizontal, 14)
-
-            Toggle(isOn: $notificationsEnabled) {
-                Text("Notifications")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(Color.textSecondary)
+            settingsRow("Notifications") {
+                Toggle("", isOn: $notificationsEnabled)
+                    .toggleStyle(.switch).controlSize(.mini)
+                    .labelsHidden()
             }
-            .toggleStyle(.switch)
-            .controlSize(.mini)
-            .padding(.horizontal, 14)
-            .padding(.top, 10)
-            .padding(.bottom, 12)
             .onChange(of: notificationsEnabled) { newValue in
-                if newValue {
-                    SessionManager.requestNotificationPermission()
-                }
+                if newValue { SessionManager.requestNotificationPermission() }
             }
         }
-        .background(Color.settingsBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.settingsBorder, lineWidth: 1)
-        )
         .padding(.horizontal, 8)
+    }
+
+    private func sectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(Color.textSecondary)
+            .textCase(.uppercase)
+            .tracking(0.8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 14)
+            .padding(.top, 10)
+            .padding(.bottom, 6)
+    }
+
+    private func settingsRow<Content: View>(_ label: String, @ViewBuilder trailing: () -> Content) -> some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(Color.textPrimary)
+            Spacer()
+            trailing()
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 7)
     }
 
     @ViewBuilder
@@ -156,31 +199,29 @@ struct SettingsSection: View {
                 updater.checkForUpdates()
             } label: {
                 HStack {
-                    Image(systemName: "arrow.down.circle.fill")
-                        .foregroundStyle(Color.amber)
-                    Text("Update available: v\(version)")
+                    Text("v\(version) available")
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(Color.textPrimary)
                     Spacer()
-                    Text("Install v\(version)")
-                        .font(.system(size: 10, weight: .medium))
+                    Text("Update")
+                        .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
                         .background(Color.amber)
-                        .clipShape(Capsule())
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
             }
             .buttonStyle(.plain)
-            Divider().padding(.horizontal, 14)
+            Divider().padding(.horizontal, 8)
         } else if let reason = updater.disabledReason {
             disabledSection(reason: reason)
-            Divider().padding(.horizontal, 14)
+            Divider().padding(.horizontal, 8)
         } else if updater.canCheckForUpdates {
             updateControlsSection
-            Divider().padding(.horizontal, 14)
+            Divider().padding(.horizontal, 8)
         }
     }
 
@@ -192,7 +233,7 @@ struct SettingsSection: View {
                 .foregroundStyle(.green)
             Text("Up to date \u{2014} v\(currentVersion)")
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.primary)
+                .foregroundStyle(Color.textPrimary)
             Spacer()
             Button {
                 updater.checkForUpdates()
@@ -229,10 +270,7 @@ private struct MonitoredToolsView: View {
     @Binding var opencodeRemoveHovered: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Monitored Tools")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(Color.textSecondary)
+        VStack(alignment: .leading, spacing: 0) {
             toolRow(name: "Claude Code", installed: pluginManager.ccInstalled)
             codexRow
             if pluginManager.ocConfigExists {
@@ -240,8 +278,7 @@ private struct MonitoredToolsView: View {
             }
         }
         .padding(.horizontal, 14)
-        .padding(.top, 12)
-        .padding(.bottom, 10)
+        .padding(.bottom, 8)
     }
 
     private var openCodeRow: some View {
@@ -260,7 +297,7 @@ private struct MonitoredToolsView: View {
                     } label: {
                         Text("Remove")
                             .font(.system(size: 10))
-                            .foregroundStyle(opencodeRemoveHovered ? Color.primary : Color.textMuted)
+                            .foregroundStyle(removeHovered ? Color.textPrimary : Color.textMuted)
                     }
                     .buttonStyle(.plain)
                     .onHover { opencodeRemoveHovered = $0 }
@@ -268,7 +305,8 @@ private struct MonitoredToolsView: View {
                     installOpenCodeButton
                 }
             }
-            if opencodeJustInstalled {
+            .padding(.vertical, 7)
+            if justInstalled {
                 HStack(spacing: 4) {
                     Image(systemName: "checkmark")
                         .font(.system(size: 10))
@@ -358,11 +396,8 @@ private struct MonitoredToolsView: View {
     private var installOpenCodeButton: some View {
         Button {
             if pluginManager.installOpenCodePlugin() {
-                opencodeJustInstalled = true
-                opencodeInstallFailed = false
-                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                    opencodeJustInstalled = false
-                }
+                justInstalled = true; installFailed = false
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3) { justInstalled = false }
             } else {
                 flashOpenCodeFailed()
             }
@@ -378,18 +413,9 @@ private struct MonitoredToolsView: View {
         .buttonStyle(.plain)
     }
 
-    private func flashCodexFailed() {
-        codexInstallFailed = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-            codexInstallFailed = false
-        }
-    }
-
-    private func flashOpenCodeFailed() {
-        opencodeInstallFailed = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-            opencodeInstallFailed = false
-        }
+    private func flashFailed() {
+        installFailed = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { installFailed = false }
     }
 
     private func toolRow(name: String, installed: Bool) -> some View {
@@ -404,25 +430,20 @@ private struct MonitoredToolsView: View {
                     .foregroundStyle(Color.textMuted)
             }
         }
+        .padding(.vertical, 7)
     }
 
     private func toolLabel(_ name: String) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: "terminal")
-                .font(.system(size: 12))
-                .foregroundStyle(Color.textSecondary)
-                .frame(width: 16, height: 16)
-            Text(name)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.primary)
-        }
+        Text(name)
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(Color.textPrimary)
     }
 
     private var connectedBadge: some View {
         HStack(spacing: 4) {
             Circle()
                 .fill(Color.statusGreen)
-                .frame(width: 6, height: 6)
+                .frame(width: 5, height: 5)
             Text("Connected")
                 .font(.system(size: 10))
                 .foregroundStyle(Color.textMuted)
@@ -445,23 +466,12 @@ private struct MonitoredToolsView: View {
     pm.ocConfigExists = ocConfig
     return pm
 }
-#Preview("Default") {
-    SettingsSection(updater: DisabledUpdater(), pluginManager: previewPM()).frame(width: 320).padding()
-}
-#Preview("Update available") {
-    let up = DisabledUpdater(); up.pendingUpdateVersion = "0.7.0"
-    return SettingsSection(updater: up, pluginManager: previewPM()).frame(width: 320).padding()
-}
-#Preview("OC detected") {
-    SettingsSection(updater: DisabledUpdater(), pluginManager: previewPM(ocConfig: true)).frame(width: 320).padding()
-}
+#Preview("Default") { SettingsSection(updater: DisabledUpdater(), pluginManager: previewPM()).frame(width: 320).padding() }
+#Preview("Update available") { let up = DisabledUpdater(); up.pendingUpdateVersion = "0.7.0"
+    return SettingsSection(updater: up, pluginManager: previewPM()).frame(width: 320).padding() }
+#Preview("OC detected") { SettingsSection(updater: DisabledUpdater(), pluginManager: previewPM(ocConfig: true)).frame(width: 320).padding() }
 #Preview("Both connected") {
-    SettingsSection(updater: DisabledUpdater(), pluginManager: previewPM(oc: true, ocConfig: true)).frame(width: 320).padding()
-}
-#Preview("Sparkle: update available") {
-    let mock = MockUpdater(); mock.pendingUpdateVersion = "0.7.0"
-    return SettingsSection(updater: mock, pluginManager: previewPM()).frame(width: 320).padding()
-}
-#Preview("Sparkle: up to date") {
-    SettingsSection(updater: MockUpdater(), pluginManager: previewPM()).frame(width: 320).padding()
-}
+    SettingsSection(updater: DisabledUpdater(), pluginManager: previewPM(oc: true, ocConfig: true)).frame(width: 320).padding() }
+#Preview("Sparkle: update available") { let mu = MockUpdater(); mu.pendingUpdateVersion = "0.7.0"
+    return SettingsSection(updater: mu, pluginManager: previewPM()).frame(width: 320).padding() }
+#Preview("Sparkle: up to date") { SettingsSection(updater: MockUpdater(), pluginManager: previewPM()).frame(width: 320).padding() }
